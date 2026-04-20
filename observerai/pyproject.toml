@@ -1,0 +1,11 @@
+[project]
+name = "observerai"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.136.0",
+    "pydantic>=2.13.2",
+    "uvicorn>=0.44.0",
+]

@@ -1,0 +1,11 @@
+frontend/node_modules/
+frontend/.next/
+.venv/
+__pycache__/
+*.db
+payload.json
+.tmp-test-dbs/
+.env
+.env.*
+!.env.example
+!.env.runner.example

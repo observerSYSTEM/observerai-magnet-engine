@@ -49,7 +49,7 @@ def _get_mt5_module() -> Any:
         import MetaTrader5 as mt5
     except ImportError as exc:
         raise RuntimeError(
-            "MetaTrader5 package is required for the live runner. Install it from requirements.txt."
+            "MetaTrader5 package is required for the live runner. Install it from requirements-runner-py313.txt."
         ) from exc
     return mt5
 

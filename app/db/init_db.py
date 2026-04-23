@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
@@ -30,56 +30,41 @@ SIGNAL_COLUMN_DEFINITIONS = {
 USER_COLUMN_DEFINITIONS = {
     "password_hash": "VARCHAR(255)",
     "role": "VARCHAR(20) DEFAULT 'viewer'",
-    "is_active": "BOOLEAN DEFAULT 1",
+    "is_active": "BOOLEAN DEFAULT TRUE",
 }
 
 
-def _ensure_signal_columns() -> None:
-    """Add newer signal columns to an existing SQLite table when needed."""
-
+def _ensure_columns(table_name: str, column_definitions: dict[str, str]) -> None:
+    """Add newer columns to an existing table using dialect-safe inspection."""
     with engine.begin() as conn:
-        existing_tables = {
-            row[0]
-            for row in conn.exec_driver_sql(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
-        }
-        if "signals" not in existing_tables:
+        inspector = inspect(conn)
+        if table_name not in inspector.get_table_names():
             return
 
         existing_columns = {
-            row[1] for row in conn.exec_driver_sql("PRAGMA table_info(signals)")
+            column["name"] for column in inspector.get_columns(table_name)
         }
+        preparer = conn.dialect.identifier_preparer
+        quoted_table = preparer.quote(table_name)
 
-        for column_name, column_type in SIGNAL_COLUMN_DEFINITIONS.items():
+        for column_name, column_type in column_definitions.items():
             if column_name not in existing_columns:
+                quoted_column = preparer.quote(column_name)
                 conn.exec_driver_sql(
-                    f"ALTER TABLE signals ADD COLUMN {column_name} {column_type}"
+                    f"ALTER TABLE {quoted_table} ADD COLUMN {quoted_column} {column_type}"
                 )
+
+
+def _ensure_signal_columns() -> None:
+    """Add newer signal columns to an existing table when needed."""
+
+    _ensure_columns("signals", SIGNAL_COLUMN_DEFINITIONS)
 
 
 def _ensure_user_columns() -> None:
-    """Add newer user columns to an existing SQLite table when needed."""
+    """Add newer user columns to an existing table when needed."""
 
-    with engine.begin() as conn:
-        existing_tables = {
-            row[0]
-            for row in conn.exec_driver_sql(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
-        }
-        if "users" not in existing_tables:
-            return
-
-        existing_columns = {
-            row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)")
-        }
-
-        for column_name, column_type in USER_COLUMN_DEFINITIONS.items():
-            if column_name not in existing_columns:
-                conn.exec_driver_sql(
-                    f"ALTER TABLE users ADD COLUMN {column_name} {column_type}"
-                )
+    _ensure_columns("users", USER_COLUMN_DEFINITIONS)
 
 
 def _seed_operator_user() -> None:

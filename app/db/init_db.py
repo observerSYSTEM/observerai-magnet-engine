@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import inspect, select
 
 from app.db.base import Base
@@ -6,6 +8,8 @@ from app.models import candle, market_state, signal, signal_outcome, user  # noq
 from app.core.config import get_settings
 from app.models.user import User
 from app.services.auth_service import ensure_operator_user
+
+logger = logging.getLogger(__name__)
 
 
 SIGNAL_COLUMN_DEFINITIONS = {
@@ -67,6 +71,47 @@ def _ensure_user_columns() -> None:
     _ensure_columns("users", USER_COLUMN_DEFINITIONS)
 
 
+def _is_auto_generated_id(column: dict[str, object], dialect_name: str) -> bool:
+    """Return whether an inspected id column appears database-generated."""
+
+    if dialect_name == "sqlite":
+        return bool(column.get("primary_key")) and (
+            "integer" in str(column.get("type")).lower()
+        )
+
+    if dialect_name == "postgresql":
+        default = str(column.get("default") or "").lower()
+        return bool(column.get("identity")) or "nextval(" in default
+
+    return column.get("autoincrement") is True or bool(column.get("identity"))
+
+
+def _warn_if_user_id_not_autoincrement() -> None:
+    """Warn when an existing users table cannot auto-generate primary keys."""
+
+    with engine.begin() as conn:
+        inspector = inspect(conn)
+        if "users" not in inspector.get_table_names():
+            return
+
+        id_column = next(
+            (
+                column
+                for column in inspector.get_columns("users")
+                if column["name"] == "id"
+            ),
+            None,
+        )
+        if id_column is None or _is_auto_generated_id(id_column, conn.dialect.name):
+            return
+
+        logger.warning(
+            "Existing users.id column does not appear to be auto-generated for dialect=%s. "
+            "Base.metadata.create_all() cannot repair existing columns; run a migration or reset the database.",
+            conn.dialect.name,
+        )
+
+
 def _seed_operator_user() -> None:
     settings = get_settings()
 
@@ -92,4 +137,5 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_signal_columns()
     _ensure_user_columns()
+    _warn_if_user_id_not_autoincrement()
     _seed_operator_user()

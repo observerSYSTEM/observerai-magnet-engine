@@ -133,3 +133,22 @@ def test_performance_summary_counts_target_hit_after_price_update():
     assert summary["invalidated"] == 0
     assert summary["expired"] == 0
     assert summary["win_rate_pct"] == 100.0
+
+
+def test_performance_summary_returns_zero_state_for_symbol_without_outcomes():
+    db_path, engine, testing_session_local = _build_test_db()
+    try:
+        with testing_session_local() as db:
+            evaluate_oracle_post(_sample_oracle_request(), db=db)
+            summary = performance_summary(symbol="GBPJPY", db=db).model_dump()
+    finally:
+        _cleanup_test_db(db_path, engine)
+
+    assert summary["symbol"] == "GBPJPY"
+    assert summary["total_signals"] == 0
+    assert summary["open_signals"] == 0
+    assert summary["closed_signals"] == 0
+    assert summary["target_hit"] == 0
+    assert summary["invalidated"] == 0
+    assert summary["expired"] == 0
+    assert summary["win_rate_pct"] == 0.0

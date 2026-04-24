@@ -1,13 +1,17 @@
+import json
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
+
+from app.core.config import get_settings
 
 router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def signals_dashboard() -> HTMLResponse:
-    return HTMLResponse(
-        """
+    symbols_json = json.dumps(get_settings().runner_symbols)
+    html = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,139 +20,158 @@ def signals_dashboard() -> HTMLResponse:
   <title>ObserverAI Signals Dashboard</title>
   <style>
     :root {
-      --bg: #f4efe6;
-      --panel: #fffdf8;
-      --panel-soft: #f8f1e6;
-      --ink: #1f1d1a;
-      --muted: #6a645d;
-      --line: #d8cfc0;
-      --accent: #8b5e34;
-      --buy: #1d6b45;
-      --sell: #9f3427;
-      --wait: #836a2a;
-      --shadow: 0 18px 44px rgba(71, 51, 27, 0.08);
-      --shadow-soft: 0 8px 24px rgba(71, 51, 27, 0.06);
+      --bg: #f4f1eb;
+      --panel: #ffffff;
+      --panel-soft: #fbf8f3;
+      --ink: #14181d;
+      --muted: #69717c;
+      --line: #d8d1c5;
+      --accent: #8d7447;
+      --buy: #1e6a46;
+      --sell: #9a4033;
+      --wait: #7f6c3c;
+      --shadow: 0 18px 40px rgba(20, 24, 29, 0.06);
+      --shadow-soft: 0 10px 24px rgba(20, 24, 29, 0.04);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(139, 94, 52, 0.12), transparent 28%),
-        linear-gradient(180deg, #f8f3ea 0%, var(--bg) 100%);
       min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
     }
 
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 32px 0 48px;
+      padding: 28px 0 56px;
     }
 
-    .hero {
+    .masthead {
       display: grid;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .eyebrow {
       color: var(--accent);
       font-size: 12px;
+      font-weight: 600;
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
 
-    h1 {
+    h1, h2, h3 {
       margin: 0;
-      font-size: clamp(32px, 5vw, 54px);
-      line-height: 0.95;
+      font-family: Georgia, "Times New Roman", serif;
       font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    h1 {
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.08;
+    }
+
+    h2 {
+      font-size: 25px;
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.25;
     }
 
     .subhead {
       margin: 0;
+      max-width: 860px;
       color: var(--muted);
-      font-size: 16px;
-      max-width: 760px;
+      font-size: 15px;
+      line-height: 1.7;
     }
 
-    .toolbar {
+    .topbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       margin-bottom: 20px;
       padding: 14px 16px;
-      background: rgba(255, 253, 248, 0.86);
-      border: 1px solid rgba(216, 207, 192, 0.9);
+      border: 1px solid var(--line);
       border-radius: 18px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow-soft);
     }
 
-    .toolbar-group {
+    .topbar-group {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    label {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    input {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--ink);
-      padding: 10px 12px;
-      border-radius: 999px;
-      min-width: 132px;
-      font: inherit;
     }
 
     button {
+      min-height: 40px;
+      padding: 0 16px;
       border: 0;
-      background: var(--accent);
-      color: white;
-      padding: 10px 16px;
       border-radius: 999px;
+      background: var(--ink);
+      color: #f8f6f1;
       font: inherit;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
-      transition: transform 140ms ease, opacity 140ms ease;
+      transition: opacity 140ms ease, transform 140ms ease;
     }
 
     button:hover {
-      opacity: 0.92;
+      opacity: 0.94;
       transform: translateY(-1px);
     }
 
     .status {
-      font-size: 13px;
       color: var(--muted);
+      font-size: 13px;
     }
 
-    .grid {
+    .timer {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .stack {
       display: grid;
       gap: 20px;
     }
 
-    .overview-grid {
+    .section {
       display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
-      gap: 20px;
-      align-items: start;
+      gap: 16px;
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .section-head span {
+      color: var(--muted);
+      font-size: 14px;
     }
 
     .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
       background: var(--panel);
-      border: 1px solid rgba(216, 207, 192, 0.94);
-      border-radius: 24px;
       box-shadow: var(--shadow);
       overflow: hidden;
     }
@@ -157,465 +180,299 @@ def signals_dashboard() -> HTMLResponse:
       padding: 22px;
     }
 
-    .latest-card {
-      position: relative;
-      background:
-        linear-gradient(135deg, rgba(248, 241, 230, 0.96), rgba(255, 253, 248, 0.98)),
-        var(--panel);
+    .accent-card {
+      background: linear-gradient(180deg, rgba(250, 248, 244, 0.96), rgba(255, 255, 255, 1));
     }
-
-    .latest-card::after {
-      content: "";
-      position: absolute;
-      inset: auto -48px -48px auto;
-      width: 180px;
-      height: 180px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(139, 94, 52, 0.16), transparent 65%);
-      pointer-events: none;
-    }
-
-    .performance-card {
-      background:
-        linear-gradient(180deg, rgba(248, 241, 230, 0.95), rgba(255, 253, 248, 0.98)),
-        var(--panel);
-    }
-
-    .topline {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 20px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 12px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      background: var(--panel-soft);
-      color: var(--accent);
-      border: 1px solid rgba(216, 207, 192, 0.75);
-    }
-
-    .action-badge {
-      font-size: 15px;
-      font-weight: 700;
-      padding: 10px 16px;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .bias-badge {
-      font-size: 13px;
-      font-weight: 600;
-      padding: 9px 14px;
-    }
-
-    .confidence-badge {
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 700;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .action-buy, .confidence-high { color: var(--buy); }
-    .action-sell, .confidence-low { color: var(--sell); }
-    .action-wait, .confidence-medium { color: var(--wait); }
 
     .headline {
       display: grid;
       gap: 10px;
-      margin-bottom: 18px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .headline h2 {
-      margin: 0;
-      font-size: clamp(30px, 4vw, 46px);
-      line-height: 0.95;
-      font-weight: 600;
     }
 
     .headline p {
       margin: 0;
       color: var(--muted);
-      font-size: 15px;
-      max-width: 700px;
-    }
-
-    .signal-age {
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 12px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .metric {
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(216, 207, 192, 0.84);
-    }
-
-    .metric-label {
-      display: block;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .metric-value {
-      display: block;
-      font-size: 22px;
-      line-height: 1;
-    }
-
-    .details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin-top: 16px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .context-block {
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .context-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-    }
-
-    .detail-card {
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.58);
-      border: 1px solid rgba(216, 207, 192, 0.8);
-    }
-
-    .context-card {
-      padding: 13px 15px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.64);
-      border: 1px solid rgba(216, 207, 192, 0.82);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .detail-label {
-      display: block;
-      margin-bottom: 7px;
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .detail-value {
-      display: block;
-      font-size: 17px;
-      line-height: 1.25;
-    }
-
-    .detail-subvalue {
-      display: block;
-      margin-top: 6px;
-      color: var(--muted);
       font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .badge-row,
+    .tile-top,
+    .liquidity-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .buy { color: var(--buy); }
+    .sell { color: var(--sell); }
+    .wait { color: var(--wait); }
+    .tradeable-yes { color: var(--buy); }
+    .tradeable-no { color: var(--wait); }
+
+    .grid-3,
+    .grid-2,
+    .mini-grid,
+    .liquidity-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+
+    .mini-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric,
+    .mini-row,
+    .liquidity-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .metric-label,
+    .mini-row span:first-child,
+    .liquidity-kicker {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric-value,
+    .mini-row span:last-child,
+    .liquidity-main {
+      display: block;
+      font-size: 18px;
       line-height: 1.35;
     }
 
-    .mid-grid {
+    .tile,
+    .liquidity-card {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 12px;
+      gap: 14px;
     }
 
-    .path-summary {
-      display: grid;
-      gap: 10px;
-      padding: 15px 16px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.64);
-      border: 1px solid rgba(216, 207, 192, 0.82);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .path-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .path-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(248, 241, 230, 0.96);
-      border: 1px solid rgba(216, 207, 192, 0.9);
-      color: var(--ink);
-      font-size: 13px;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .path-rank {
-      color: var(--accent);
-      font-weight: 700;
-      font-size: 12px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .path-arrow {
+    .tile-reason,
+    .liquidity-reason {
       color: var(--muted);
       font-size: 14px;
+      line-height: 1.6;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
-    .path-empty {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-      margin-top: 8px;
-    }
-
-    .section-head h3 {
-      margin: 0;
-      font-size: 19px;
-    }
-
-    .section-head span {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .performance-grid {
+    .liquidity-meta {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 16px;
-    }
-
-    .performance-metric {
-      padding: 14px 15px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(216, 207, 192, 0.84);
-    }
-
-    .performance-metric .metric-value {
-      font-size: 20px;
-    }
-
-    .performance-note {
-      margin: 16px 0 0;
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .signal-list {
-      display: grid;
-      gap: 14px;
-      margin-top: 14px;
-    }
-
-    .signal-item {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
-      gap: 16px;
-      padding: 16px 18px;
-      border-top: 1px solid rgba(216, 207, 192, 0.88);
-    }
-
-    .signal-item:first-child {
-      border-top: 0;
-    }
-
-    .signal-main,
-    .signal-meta {
-      display: grid;
-      gap: 8px;
-    }
-
-    .signal-title {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .signal-title strong {
-      font-size: 18px;
-    }
-
-    .signal-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px 14px;
-      color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .empty {
-      padding: 32px 22px;
-      color: var(--muted);
+      padding: 28px 20px;
       text-align: center;
+      color: var(--muted);
     }
 
     .empty strong {
       display: block;
+      margin-bottom: 8px;
       color: var(--ink);
       font-size: 20px;
-      margin-bottom: 8px;
     }
 
-    @media (max-width: 900px) {
-      .overview-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 780px) {
-      .performance-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .signal-item {
-        grid-template-columns: 1fr;
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100%, calc(100% - 24px));
       }
 
       .card-body {
         padding: 18px;
       }
 
-      .toolbar {
-        border-radius: 16px;
+      .mini-grid,
+      .liquidity-meta {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="hero">
+    <section class="masthead">
       <span class="eyebrow">ObserverAI Magnet Engine</span>
       <h1>Signals Dashboard</h1>
       <p class="subhead">
-        Live monitoring view for the latest stored signal, recent history, and performance summary from
-        <code>/signals/latest</code> and <code>/performance/summary</code>.
+        Scalping EA context stays strict and fast around M1 and M15 execution, while the dashboard also surfaces H1 and H4 liquidity magnets for swing-aware monitoring across supported symbols.
       </p>
     </section>
 
-    <section class="toolbar">
-      <div class="toolbar-group">
-        <label for="symbol-input">Symbol</label>
-        <input id="symbol-input" type="text" value="XAUUSD" />
+    <section class="topbar">
+      <div class="topbar-group">
         <button id="refresh-btn" type="button">Refresh</button>
       </div>
-      <div class="toolbar-group">
+      <div class="topbar-group">
+        <span id="m15-timer" class="timer">Next M15 close in: 15:00</span>
         <span id="status" class="status">Waiting for data...</span>
       </div>
     </section>
 
-    <section class="grid">
-      <section class="overview-grid">
-        <article class="card latest-card">
-          <div id="latest-signal" class="card-body empty">
-            <strong>No signals yet</strong>
-            Start the runner and store a signal to populate the live dashboard.
-          </div>
-        </article>
-
-        <article class="card performance-card">
-          <div id="performance-summary" class="card-body empty">
-            <strong>No performance data yet</strong>
-            Performance metrics will appear once stored signals begin tracking outcomes.
-          </div>
-        </article>
-      </section>
-
-      <article class="card">
-        <div class="card-body">
-          <div class="section-head">
-            <h3>Recent Signals</h3>
-            <span id="recent-count">0 signals</span>
-          </div>
-          <div id="recent-signals" class="signal-list">
-            <div class="empty">
-              <strong>History is empty</strong>
-              Recent signals will appear here automatically once the engine has activity.
-            </div>
-          </div>
+    <section class="stack">
+      <article class="card accent-card">
+        <div id="best-signal" class="card-body empty">
+          <strong>Best Signal Now</strong>
+          No strong signal available
         </div>
       </article>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Scalping Signals</h2>
+          <span>M1/M15 execution view</span>
+        </div>
+        <div id="symbol-grid" class="grid-3">
+          <article class="card">
+            <div class="card-body empty">
+              <strong>Loading symbols...</strong>
+              ObserverAI is preparing the latest scalping signal tiles.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Swing Liquidity</h2>
+          <span>H1 Magnets | H4 Magnets | dashboard-only context</span>
+        </div>
+
+        <article class="card accent-card">
+          <div id="strongest-liquidity" class="card-body empty">
+            <strong>Strongest Liquidity Magnet</strong>
+            No H1/H4 liquidity magnets yet.
+          </div>
+        </article>
+
+        <div id="liquidity-grid" class="grid-3">
+          <article class="card">
+            <div class="card-body empty">
+              <strong>Loading liquidity...</strong>
+              ObserverAI is preparing H1 and H4 magnets.
+            </div>
+          </article>
+        </div>
+      </section>
     </section>
   </main>
 
   <script>
-    const symbolInput = document.getElementById("symbol-input");
+    const SUPPORTED_SYMBOLS = __SYMBOLS_JSON__;
+    const REFRESH_INTERVAL_MS = 15000;
+    const MAX_TRADEABLE_AGE_MS = 24 * 60 * 60 * 1000;
+
+    const LABEL_OVERRIDES = {
+      bullish_continuation: "Bullish Continuation",
+      bearish_continuation: "Bearish Continuation",
+      bullish_reversal: "Bullish Reversal",
+      bearish_reversal: "Bearish Reversal",
+      neutral_outside_value: "Neutral Outside Value",
+      neutral_wait: "Neutral Wait",
+      target_hit: "Target Hit",
+      invalidated: "Invalidated",
+      expired: "Expired",
+      open: "Open",
+      not_tracking: "Not Tracking",
+      none: "None",
+      equal_highs: "Equal Highs",
+      equal_lows: "Equal Lows",
+      previous_day_high: "Previous Day High",
+      previous_day_low: "Previous Day Low",
+      weekly_high: "Weekly High",
+      weekly_low: "Weekly Low",
+      round_number: "Round Number",
+      imbalance: "Unfilled Imbalance"
+    };
+
     const refreshButton = document.getElementById("refresh-btn");
     const statusNode = document.getElementById("status");
-    const latestNode = document.getElementById("latest-signal");
-    const performanceNode = document.getElementById("performance-summary");
-    const recentNode = document.getElementById("recent-signals");
-    const recentCountNode = document.getElementById("recent-count");
+    const timerNode = document.getElementById("m15-timer");
+    const bestSignalNode = document.getElementById("best-signal");
+    const symbolGridNode = document.getElementById("symbol-grid");
+    const strongestLiquidityNode = document.getElementById("strongest-liquidity");
+    const liquidityGridNode = document.getElementById("liquidity-grid");
 
-    function formatNumber(value) {
-      if (value === null || value === undefined) {
-        return "none";
+    let latestBySymbol = new Map();
+    let liquidityBySymbol = new Map();
+
+    function humanizeLabel(value) {
+      if (!value) {
+        return "None";
       }
-      return Number(value).toFixed(2);
+
+      const normalized = String(value).trim();
+      const lowered = normalized.toLowerCase();
+      if (LABEL_OVERRIDES[lowered]) {
+        return LABEL_OVERRIDES[lowered];
+      }
+
+      return normalized
+        .split(/[_\\s]+/)
+        .filter(Boolean)
+        .map((part) => {
+          const token = part.toLowerCase();
+          if (token === "adr") return "ADR";
+          if (token === "bos") return "BOS";
+          if (token === "mss") return "MSS";
+          if (token === "xauusd") return "XAUUSD";
+          if (token === "gbpjpy") return "GBPJPY";
+          if (token === "btcusd") return "BTCUSD";
+          return part.charAt(0).toUpperCase() + part.slice(1);
+        })
+        .join(" ");
     }
 
-    function formatDecimal(value) {
-      if (value === null || value === undefined) {
-        return "0.00";
+    function formatNumber(value, fallback = "None") {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return fallback;
       }
       return Number(value).toFixed(2);
-    }
-
-    function formatTarget(signal) {
-      return signal.intent && signal.intent.target !== null && signal.intent.target !== undefined
-        ? formatNumber(signal.intent.target)
-        : "none";
     }
 
     function formatTimestamp(value) {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        return value;
+        return "Unknown";
       }
       return date.toLocaleString();
     }
@@ -623,387 +480,408 @@ def signals_dashboard() -> HTMLResponse:
     function formatAge(value) {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        return "unknown age";
+        return "Unknown";
       }
 
       const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-      if (seconds < 15) {
-        return "just now";
-      }
-      if (seconds < 60) {
-        return `${seconds}s ago`;
-      }
-
+      if (seconds < 60) return `${seconds}s ago`;
       const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) {
-        return `${minutes}m ago`;
-      }
-
+      if (minutes < 60) return `${minutes}m ago`;
       const hours = Math.floor(minutes / 60);
-      if (hours < 24) {
-        return `${hours}h ago`;
-      }
-
+      if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
       const days = Math.floor(hours / 24);
-      return `${days}d ago`;
+      return `${days}d ${hours % 24}h ago`;
+    }
+
+    function formatAction(action) {
+      if (action === "BUY") return "Buy Signal";
+      if (action === "SELL") return "Sell Signal";
+      return "Standby";
     }
 
     function actionClass(action) {
-      return `action-${String(action || "wait").toLowerCase()}`;
+      if (action === "BUY") return "buy";
+      if (action === "SELL") return "sell";
+      return "wait";
     }
 
-    function confidenceClass(confidence) {
-      if (confidence >= 75) {
-        return "confidence-high";
-      }
-      if (confidence >= 50) {
-        return "confidence-medium";
-      }
-      return "confidence-low";
+    function formatLifecycle(signal) {
+      return signal && signal.lifecycle && signal.lifecycle.state
+        ? signal.lifecycle.state
+        : "Setup Forming";
     }
 
-    function formatMagnet(magnet) {
-      if (!magnet) {
-        return "none";
-      }
-      return `${magnet.name} ${formatNumber(magnet.price)}`;
+    function formatBias(signal) {
+      return humanizeLabel(signal && signal.resolved_bias);
     }
 
-    function formatMidFlow(midTargets) {
-      if (!midTargets || !midTargets.flow) {
-        return "no_mid_flow";
-      }
-      return midTargets.flow;
+    function formatReason(signal) {
+      return signal && signal.intent && signal.intent.reason
+        ? String(signal.intent.reason)
+        : "No additional context available.";
     }
 
-    function formatMidPointName(midPoint) {
-      if (!midPoint || !midPoint.name) {
-        return "No valid mid";
+    function isTradeableSignal(signal) {
+      if (!signal || !signal.intent) return false;
+      if (!["BUY", "SELL"].includes(signal.intent.action)) return false;
+      if (Number(signal.confidence || 0) < 88) return false;
+      if (!signal.intent.target && signal.intent.target !== 0) return false;
+      if (formatLifecycle(signal) !== "Setup Confirmed") return false;
+      if (
+        !String(signal.resolved_bias || "").startsWith("bullish") &&
+        !String(signal.resolved_bias || "").startsWith("bearish")
+      ) {
+        return false;
       }
-      return midPoint.name;
+
+      const createdAt = new Date(signal.created_at);
+      if (Number.isNaN(createdAt.getTime())) return false;
+      return (Date.now() - createdAt.getTime()) <= MAX_TRADEABLE_AGE_MS;
     }
 
-    function formatMidPointPrice(midPoint) {
-      if (!midPoint || midPoint.price === null || midPoint.price === undefined) {
-        return "No valid mid";
-      }
-      return formatNumber(midPoint.price);
+    function tradeableLabel(signal) {
+      return isTradeableSignal(signal) ? "Tradeable" : "Not Tradeable";
     }
 
-    function formatMagnetPath(magnetPath) {
-      if (!Array.isArray(magnetPath) || !magnetPath.length) {
-        return '<span class="path-empty">No ranked path available yet.</span>';
-      }
-
-      return magnetPath.slice(0, 4).map((magnet, index, list) => {
-        const pill = `
-          <span class="path-pill">
-            <span class="path-rank">#${index + 1}</span>
-            <span>${magnet.name} ${formatNumber(magnet.price)}</span>
-          </span>
+    function renderBestSignal(payload) {
+      if (!payload || !payload.tradeable) {
+        bestSignalNode.className = "card-body empty";
+        bestSignalNode.innerHTML = `
+          <strong>Best Signal Now</strong>
+          ${payload && payload.message ? payload.message : "No strong signal available"}
         `;
+        return;
+      }
 
-        if (index === list.length - 1) {
-          return pill;
+      bestSignalNode.className = "card-body";
+      bestSignalNode.innerHTML = `
+        <div class="headline">
+          <span class="eyebrow">Best Signal Now</span>
+          <div class="badge-row">
+            <span class="pill">${payload.symbol}</span>
+            <span class="pill ${actionClass(payload.action)}">${formatAction(payload.action)}</span>
+            <span class="pill tradeable-yes">Tradeable</span>
+            <span class="pill">${payload.bias}</span>
+          </div>
+          <p>${payload.reason || "Highest confidence active directional setup"}</p>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-row">
+            <span>Confidence</span>
+            <span>${payload.confidence}%</span>
+          </div>
+          <div class="mini-row">
+            <span>Current Price</span>
+            <span>${formatNumber(payload.price)}</span>
+          </div>
+          <div class="mini-row">
+            <span>Target</span>
+            <span>${formatNumber(payload.target, "Not Set")}</span>
+          </div>
+          <div class="mini-row">
+            <span>Mode</span>
+            <span>Scalping EA</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSignalTiles() {
+      symbolGridNode.innerHTML = SUPPORTED_SYMBOLS.map((symbol) => {
+        const signal = latestBySymbol.get(symbol);
+        if (!signal) {
+          return `
+            <article class="card">
+              <div class="card-body empty">
+                <strong>${symbol}</strong>
+                No signals yet for this symbol.
+              </div>
+            </article>
+          `;
         }
 
-        return `${pill}<span class="path-arrow">→</span>`;
+        const tradeable = isTradeableSignal(signal);
+        return `
+          <article class="card">
+            <div class="card-body tile">
+              <div class="tile-top">
+                <span class="pill">${signal.symbol}</span>
+                <span class="pill ${actionClass(signal.intent.action)}">${formatAction(signal.intent.action)}</span>
+                <span class="pill ${tradeable ? "tradeable-yes" : "tradeable-no"}">${tradeableLabel(signal)}</span>
+              </div>
+              <div class="headline">
+                <div class="section-head">
+                  <h3>${formatBias(signal)}</h3>
+                  <span>Lifecycle: ${formatLifecycle(signal)}</span>
+                </div>
+                <p>Last updated ${formatAge(signal.created_at)} | ${formatTimestamp(signal.created_at)}</p>
+              </div>
+              <div class="mini-grid">
+                <div class="mini-row">
+                  <span>Confidence</span>
+                  <span>${signal.confidence}%</span>
+                </div>
+                <div class="mini-row">
+                  <span>Price</span>
+                  <span>${formatNumber(signal.current_price)}</span>
+                </div>
+                <div class="mini-row">
+                  <span>Target</span>
+                  <span>${formatNumber(signal.intent && signal.intent.target, "Not Set")}</span>
+                </div>
+                <div class="mini-row">
+                  <span>Status</span>
+                  <span>${humanizeLabel(signal.lifecycle && signal.lifecycle.outcome_status)}</span>
+                </div>
+              </div>
+              <div class="tile-reason">${formatReason(signal)}</div>
+            </div>
+          </article>
+        `;
       }).join("");
     }
 
-    function renderPerformance(summary, symbol, errorMessage) {
-      if (errorMessage) {
-        performanceNode.className = "card-body empty";
-        performanceNode.innerHTML = `
-          <strong>Performance unavailable</strong>
-          ${errorMessage}
-        `;
-        return;
+    function flattenLiquidity() {
+      const all = [];
+      for (const symbol of SUPPORTED_SYMBOLS) {
+        const entry = liquidityBySymbol.get(symbol);
+        if (!entry) continue;
+        for (const timeframe of ["H1", "H4"]) {
+          const payload = entry[timeframe];
+          if (!payload || !Array.isArray(payload.strong_magnets)) continue;
+          for (const magnet of payload.strong_magnets) {
+            all.push({ symbol, timeframe, ...magnet });
+          }
+        }
       }
-
-      if (!summary || !summary.total_signals) {
-        performanceNode.className = "card-body empty";
-        performanceNode.innerHTML = `
-          <strong>No tracked outcomes yet</strong>
-          Performance metrics for ${symbol} will appear once actionable signals are stored and evaluated.
-        `;
-        return;
-      }
-
-      performanceNode.className = "card-body";
-      performanceNode.innerHTML = `
-        <div class="section-head">
-          <h3>Performance Summary</h3>
-          <span>${summary.symbol}</span>
-        </div>
-        <div class="performance-grid">
-          <div class="performance-metric">
-            <span class="metric-label">Total Signals</span>
-            <span class="metric-value">${summary.total_signals}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Open</span>
-            <span class="metric-value">${summary.open_signals}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Closed</span>
-            <span class="metric-value">${summary.closed_signals}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Target Hit</span>
-            <span class="metric-value">${summary.target_hit}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Invalidated</span>
-            <span class="metric-value">${summary.invalidated}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Expired</span>
-            <span class="metric-value">${summary.expired}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Win Rate</span>
-            <span class="metric-value">${formatDecimal(summary.win_rate_pct)}%</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Avg MFE</span>
-            <span class="metric-value">${formatDecimal(summary.avg_mfe)}</span>
-          </div>
-          <div class="performance-metric">
-            <span class="metric-label">Avg MAE</span>
-            <span class="metric-value">${formatDecimal(summary.avg_mae)}</span>
-          </div>
-        </div>
-        <p class="performance-note">
-          Closed outcomes are counted once a target is hit, a setup is invalidated, or the tracking window expires.
-        </p>
-      `;
+      return all;
     }
 
-    function renderLatest(signal) {
-      if (!signal) {
-        latestNode.className = "card-body empty";
-        latestNode.innerHTML = `
-          <strong>No signals yet</strong>
-          Start the runner and store a signal to populate the live dashboard.
+    function renderStrongestLiquidity() {
+      const magnets = flattenLiquidity();
+      if (!magnets.length) {
+        strongestLiquidityNode.className = "card-body empty";
+        strongestLiquidityNode.innerHTML = `
+          <strong>Strongest Liquidity Magnet</strong>
+          No H1/H4 liquidity magnets yet.
         `;
         return;
       }
 
-      latestNode.className = "card-body";
-      latestNode.innerHTML = `
-        <div class="topline">
-          <span class="pill">${signal.symbol}</span>
-          <div class="toolbar-group">
-            <span class="pill bias-badge">${signal.resolved_bias}</span>
-            <span class="pill confidence-badge ${confidenceClass(signal.confidence)}">Confidence ${signal.confidence}</span>
-            <span class="pill action-badge ${actionClass(signal.intent.action)}">${signal.intent.action}</span>
-          </div>
-        </div>
+      magnets.sort((left, right) => {
+        if (right.strength !== left.strength) return right.strength - left.strength;
+        if (left.distance !== right.distance) return left.distance - right.distance;
+        return left.rank - right.rank;
+      });
+
+      const strongest = magnets[0];
+      strongestLiquidityNode.className = "card-body";
+      strongestLiquidityNode.innerHTML = `
         <div class="headline">
-          <h2>${signal.event_type}</h2>
-          <p>
-            Latest signal age:
-            <span class="signal-age">${formatAge(signal.created_at)}</span>
-            | Created ${formatTimestamp(signal.created_at)}
-          </p>
+          <span class="eyebrow">Strongest Liquidity Magnet</span>
+          <div class="liquidity-top">
+            <span class="pill">${strongest.symbol}</span>
+            <span class="pill">${strongest.timeframe}</span>
+            <span class="pill">${humanizeLabel(strongest.type)}</span>
+            <span class="pill">${strongest.side === "above" ? "Above" : "Below"}</span>
+          </div>
+          <p>${strongest.reason}</p>
         </div>
-        <div class="metrics">
-          <div class="metric">
-            <span class="metric-label">Current Price</span>
-            <span class="metric-value">${formatNumber(signal.current_price)}</span>
+        <div class="mini-grid">
+          <div class="mini-row">
+            <span>Price</span>
+            <span>${formatNumber(strongest.price)}</span>
           </div>
-          <div class="metric">
-            <span class="metric-label">Action</span>
-            <span class="metric-value ${actionClass(signal.intent.action)}">${signal.intent.action}</span>
+          <div class="mini-row">
+            <span>Distance</span>
+            <span>${formatNumber(strongest.distance)}</span>
           </div>
-          <div class="metric">
-            <span class="metric-label">Target</span>
-            <span class="metric-value">${formatTarget(signal)}</span>
+          <div class="mini-row">
+            <span>Strength</span>
+            <span>${strongest.strength}</span>
           </div>
-          <div class="metric">
-            <span class="metric-label">Confidence</span>
-            <span class="metric-value ${confidenceClass(signal.confidence)}">${signal.confidence}</span>
-          </div>
-        </div>
-        <div class="details-grid">
-          <div class="detail-card">
-            <span class="detail-label">Resolved Bias</span>
-            <span class="detail-value ${actionClass(signal.intent.action)}">${signal.resolved_bias}</span>
-          </div>
-          <div class="detail-card">
-            <span class="detail-label">Anchor Type</span>
-            <span class="detail-value">${signal.anchor_type || "none"}</span>
-          </div>
-          <div class="detail-card">
-            <span class="detail-label">ADR State</span>
-            <span class="detail-value">${signal.adr_state || "none"}</span>
-          </div>
-          <div class="detail-card">
-            <span class="detail-label">Nearest Magnet</span>
-            <span class="detail-value">${formatMagnet(signal.nearest_magnet)}</span>
-          </div>
-          <div class="detail-card">
-            <span class="detail-label">Major Magnet</span>
-            <span class="detail-value">${formatMagnet(signal.major_magnet)}</span>
-          </div>
-          <div class="detail-card">
-            <span class="detail-label">Reason</span>
-            <span class="detail-value">${signal.intent.reason}</span>
-          </div>
-        </div>
-        <div class="context-block">
-          <div class="mid-grid">
-            <div class="context-card">
-              <span class="detail-label">Mid Flow</span>
-              <span class="detail-value">${formatMidFlow(signal.mid_targets)}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Current Mid</span>
-              <span class="detail-value">${formatMidPointName(signal.mid_targets && signal.mid_targets.current_mid)}</span>
-              <span class="detail-subvalue">Price ${formatMidPointPrice(signal.mid_targets && signal.mid_targets.current_mid)}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Next Mid</span>
-              <span class="detail-value">${formatMidPointName(signal.mid_targets && signal.mid_targets.next_mid)}</span>
-              <span class="detail-subvalue">Price ${formatMidPointPrice(signal.mid_targets && signal.mid_targets.next_mid)}</span>
-            </div>
-          </div>
-          <div class="context-grid">
-            <div class="context-card">
-              <span class="detail-label">Structure Type</span>
-              <span class="detail-value">${signal.structure && signal.structure.type ? signal.structure.type : "none"}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Structure Direction</span>
-              <span class="detail-value">${signal.structure && signal.structure.direction ? signal.structure.direction : "neutral"}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Sweep Type</span>
-              <span class="detail-value">${signal.sweep && signal.sweep.type ? signal.sweep.type : "none"}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Sweep Strength</span>
-              <span class="detail-value">${signal.sweep ? formatDecimal(signal.sweep.strength) : "0.00"}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Momentum Class</span>
-              <span class="detail-value">${signal.momentum && signal.momentum.classification ? signal.momentum.classification : "none"}</span>
-            </div>
-            <div class="context-card">
-              <span class="detail-label">Momentum Direction</span>
-              <span class="detail-value">${signal.momentum && signal.momentum.direction ? signal.momentum.direction : "neutral"}</span>
-            </div>
-          </div>
-          <div class="path-summary">
-            <span class="detail-label">Magnet Path</span>
-            <div class="path-list">${formatMagnetPath(signal.magnet_path)}</div>
+          <div class="mini-row">
+            <span>Direction</span>
+            <span>${strongest.side === "above" ? "Above" : "Below"}</span>
           </div>
         </div>
       `;
     }
 
-    function renderRecent(signals) {
-      recentCountNode.textContent = `${signals.length} signal${signals.length === 1 ? "" : "s"}`;
-
-      if (!signals.length) {
-        recentNode.innerHTML = `
+    function renderMagnetList(payload, timeframe) {
+      if (!payload || !Array.isArray(payload.strong_magnets) || !payload.strong_magnets.length) {
+        return `
           <div class="empty">
-            <strong>History is empty</strong>
-            Recent signals will appear here automatically once the engine has activity.
+            <strong>${timeframe} Magnets</strong>
+            No ${timeframe} liquidity magnets yet for this symbol.
           </div>
         `;
-        return;
       }
 
-      recentNode.innerHTML = signals.map((signal) => `
-        <section class="signal-item">
-          <div class="signal-main">
-            <div class="signal-title">
-              <strong>${signal.symbol}</strong>
-              <span class="pill ${actionClass(signal.intent.action)}">${signal.intent.action}</span>
-              <span class="pill">${signal.resolved_bias}</span>
-            </div>
-            <div>${signal.event_type}</div>
-            <div class="status">Age ${formatAge(signal.created_at)} | ${formatTimestamp(signal.created_at)}</div>
-          </div>
-          <div class="signal-meta">
-            <div class="signal-meta-grid">
-              <span>Price: ${formatNumber(signal.current_price)}</span>
-              <span>Target: ${formatTarget(signal)}</span>
-              <span class="${confidenceClass(signal.confidence)}">Confidence: ${signal.confidence}</span>
-              <span>Anchor: ${signal.anchor_type || "none"}</span>
-            </div>
-          </div>
-        </section>
-      `).join("");
+      return `
+        <div class="liquidity-list">
+          ${payload.strong_magnets.slice(0, 3).map((magnet) => `
+            <article class="liquidity-item">
+              <span class="liquidity-kicker">${timeframe} Magnets</span>
+              <span class="liquidity-main">${magnet.rank}. ${magnet.label} ${formatNumber(magnet.price)}</span>
+              <div class="liquidity-meta">
+                <span>Direction: ${magnet.side === "above" ? "Above" : "Below"}</span>
+                <span>Distance: ${formatNumber(magnet.distance)}</span>
+                <span>Strength: ${magnet.strength}</span>
+              </div>
+              <div class="liquidity-reason">${magnet.reason}</div>
+            </article>
+          `).join("")}
+        </div>
+      `;
     }
 
-    async function loadSignals() {
-      const symbol = symbolInput.value.trim() || "XAUUSD";
-      statusNode.textContent = `Loading ${symbol}...`;
+    function renderLiquidityTiles() {
+      liquidityGridNode.innerHTML = SUPPORTED_SYMBOLS.map((symbol) => {
+        const entry = liquidityBySymbol.get(symbol);
+        const h1 = entry ? entry.H1 : null;
+        const h4 = entry ? entry.H4 : null;
+        const hasAny = Boolean(
+          (h1 && h1.strong_magnets && h1.strong_magnets.length) ||
+          (h4 && h4.strong_magnets && h4.strong_magnets.length)
+        );
+
+        if (!hasAny) {
+          return `
+            <article class="card">
+              <div class="card-body empty">
+                <strong>${symbol}</strong>
+                No H1/H4 liquidity magnets yet for this symbol.
+              </div>
+            </article>
+          `;
+        }
+
+        return `
+          <article class="card">
+            <div class="card-body liquidity-card">
+              <div class="section-head">
+                <h3>${symbol}</h3>
+                <span>HTF Bias: ${entry && entry.htf_magnet_bias ? humanizeLabel(entry.htf_magnet_bias) : "Neutral"}</span>
+              </div>
+              <div class="grid-2">
+                <div>${renderMagnetList(h1, "H1")}</div>
+                <div>${renderMagnetList(h4, "H4")}</div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function updateM15Timer() {
+      const now = new Date();
+      const elapsed = (now.getMinutes() % 15) * 60 + now.getSeconds();
+      const remaining = elapsed === 0 ? 15 * 60 : (15 * 60) - elapsed;
+      const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const seconds = String(remaining % 60).padStart(2, "0");
+      timerNode.textContent = `Next M15 close in: ${minutes}:${seconds}`;
+    }
+
+    function refreshAges() {
+      if (latestBySymbol.size) {
+        renderSignalTiles();
+      }
+    }
+
+    async function loadDashboard() {
+      statusNode.textContent = "Loading multi-symbol signals and liquidity...";
 
       try {
-        const [signalsResult, performanceResult] = await Promise.allSettled([
-          fetch(`/signals/latest?symbol=${encodeURIComponent(symbol)}&limit=8`),
-          fetch(`/performance/summary?symbol=${encodeURIComponent(symbol)}`),
-        ]);
+        const requests = [
+          fetch("/signals/best"),
+          ...SUPPORTED_SYMBOLS.map((symbol) => fetch(`/signals/latest?symbol=${encodeURIComponent(symbol)}&limit=1`)),
+          ...SUPPORTED_SYMBOLS.flatMap((symbol) => [
+            fetch(`/liquidity/magnets?symbol=${encodeURIComponent(symbol)}&timeframe=H1`),
+            fetch(`/liquidity/magnets?symbol=${encodeURIComponent(symbol)}&timeframe=H4`)
+          ])
+        ];
 
-        if (signalsResult.status !== "fulfilled") {
-          throw signalsResult.reason;
+        const responses = await Promise.all(requests);
+        const bestResponse = responses[0];
+        const latestResponses = responses.slice(1, 1 + SUPPORTED_SYMBOLS.length);
+        const liquidityResponses = responses.slice(1 + SUPPORTED_SYMBOLS.length);
+
+        if (!bestResponse.ok) {
+          throw new Error(`Best signal request failed with HTTP ${bestResponse.status}.`);
         }
 
-        const signalsResponse = signalsResult.value;
-        if (!signalsResponse.ok) {
-          throw new Error(`HTTP ${signalsResponse.status}`);
-        }
+        renderBestSignal(await bestResponse.json());
 
-        const payload = await signalsResponse.json();
-        const [latest, ...recent] = payload.items || [];
-        renderLatest(latest);
-        renderRecent(recent);
-
-        let performanceUnavailable = false;
-        if (performanceResult.status === "fulfilled") {
-          const performanceResponse = performanceResult.value;
-          if (performanceResponse.ok) {
-            const summary = await performanceResponse.json();
-            renderPerformance(summary, payload.symbol, "");
-          } else {
-            performanceUnavailable = true;
-            renderPerformance(null, payload.symbol, `Performance summary request failed with HTTP ${performanceResponse.status}.`);
+        latestBySymbol = new Map();
+        for (let index = 0; index < latestResponses.length; index += 1) {
+          const response = latestResponses[index];
+          const symbol = SUPPORTED_SYMBOLS[index];
+          if (!response.ok) continue;
+          const payload = await response.json();
+          const item = Array.isArray(payload.items) && payload.items.length ? payload.items[0] : null;
+          if (item) {
+            latestBySymbol.set(symbol, item);
           }
-        } else {
-          performanceUnavailable = true;
-          renderPerformance(null, payload.symbol, "Performance summary is temporarily unavailable.");
+        }
+        renderSignalTiles();
+
+        liquidityBySymbol = new Map();
+        for (let index = 0; index < liquidityResponses.length; index += 2) {
+          const symbol = SUPPORTED_SYMBOLS[index / 2];
+          const h1Response = liquidityResponses[index];
+          const h4Response = liquidityResponses[index + 1];
+          const symbolEntry = { H1: null, H4: null, htf_magnet_bias: "neutral" };
+
+          if (h1Response && h1Response.ok) {
+            symbolEntry.H1 = await h1Response.json();
+          }
+          if (h4Response && h4Response.ok) {
+            symbolEntry.H4 = await h4Response.json();
+          }
+
+          const biases = [symbolEntry.H1 && symbolEntry.H1.htf_magnet_bias, symbolEntry.H4 && symbolEntry.H4.htf_magnet_bias].filter(Boolean);
+          if (biases.includes("bullish") && !biases.includes("bearish")) {
+            symbolEntry.htf_magnet_bias = "bullish";
+          } else if (biases.includes("bearish") && !biases.includes("bullish")) {
+            symbolEntry.htf_magnet_bias = "bearish";
+          }
+
+          liquidityBySymbol.set(symbol, symbolEntry);
         }
 
-        statusNode.textContent = `Loaded ${payload.count} signal${payload.count === 1 ? "" : "s"} for ${payload.symbol}${performanceUnavailable ? " | Performance unavailable" : ""} | Auto-refresh every 15s`;
+        renderStrongestLiquidity();
+        renderLiquidityTiles();
+        statusNode.textContent = `Loaded ${SUPPORTED_SYMBOLS.length} symbols | Auto-refresh every 15s`;
       } catch (error) {
-        const errorMessage = error && error.message ? error.message : "Unknown error";
-        latestNode.className = "card-body empty";
-        latestNode.innerHTML = `
-          <strong>Dashboard refresh failed</strong>
-          ${errorMessage}
+        const message = error instanceof Error ? error.message : "Unknown error.";
+        bestSignalNode.className = "card-body empty";
+        bestSignalNode.innerHTML = `
+          <strong>Best Signal Now</strong>
+          ${message}
         `;
-        renderPerformance(null, symbol, "Performance summary is unavailable until the dashboard can reach the API.");
-        recentNode.innerHTML = "";
-        recentCountNode.textContent = "0 signals";
+        strongestLiquidityNode.className = "card-body empty";
+        strongestLiquidityNode.innerHTML = `
+          <strong>Strongest Liquidity Magnet</strong>
+          Liquidity view is temporarily unavailable.
+        `;
+        latestBySymbol = new Map();
+        liquidityBySymbol = new Map();
+        renderSignalTiles();
+        renderLiquidityTiles();
         statusNode.textContent = "Dashboard refresh failed";
       }
     }
 
-    refreshButton.addEventListener("click", loadSignals);
-    symbolInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        loadSignals();
-      }
-    });
+    refreshButton.addEventListener("click", loadDashboard);
 
-    loadSignals();
-    window.setInterval(loadSignals, 15000);
+    updateM15Timer();
+    loadDashboard();
+    window.setInterval(loadDashboard, REFRESH_INTERVAL_MS);
+    window.setInterval(updateM15Timer, 1000);
+    window.setInterval(refreshAges, 1000);
   </script>
 </body>
 </html>
-        """
-    )
+"""
+    return HTMLResponse(html.replace("__SYMBOLS_JSON__", symbols_json))

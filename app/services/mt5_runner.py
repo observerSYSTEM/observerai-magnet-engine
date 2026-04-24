@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
+from app.core.symbols import normalize_symbol
 from app.services.anchor_engine import london_time_to_utc
 from app.schemas.oracle import (
     OracleEvaluateRequest,
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
 
 M1_ATR_PERIOD = 14
 M15_LOOKBACK_BARS = 160
+H1_LOOKBACK_BARS = 240
+H4_LOOKBACK_BARS = 180
 POST_RETRY_ATTEMPTS = 3
 POST_RETRY_DELAY_SECONDS = 3
 
@@ -40,6 +43,8 @@ class RunnerSnapshot:
     atr_m1: float
     m1_count: int
     m15_count: int
+    h1_count: int
+    h4_count: int
     daily_levels_count: int
     daily_adr_count: int
 
@@ -285,7 +290,7 @@ def build_live_oracle_payload(
     The payload is shaped to match POST /oracle/evaluate exactly.
     """
 
-    instrument = symbol or settings.default_symbol
+    instrument = normalize_symbol(symbol or settings.normalized_default_symbol)
     _ensure_symbol_ready(mt5, instrument)
 
     now_utc = datetime.now(timezone.utc)
@@ -297,6 +302,8 @@ def build_live_oracle_payload(
 
     m15_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_M15, M15_LOOKBACK_BARS)
     _ensure_m15_history_ready(m15_rates, instrument)
+    h1_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_H1, H1_LOOKBACK_BARS)
+    h4_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_H4, H4_LOOKBACK_BARS)
 
     daily_rates = _copy_daily_rates(mt5, instrument, settings.adr_lookback_days + 2)
 
@@ -315,6 +322,8 @@ def build_live_oracle_payload(
         atr_m1=atr_m1,
         m1_candles=[_to_timed_candle(rate) for rate in m1_rates],
         m15_candles=[_to_price_candle(rate) for rate in m15_rates],
+        h1_candles=[_to_price_candle(rate) for rate in h1_rates],
+        h4_candles=[_to_price_candle(rate) for rate in h4_rates],
         daily_candles_for_levels=[
             _to_price_candle(current_daily, daily=True),
             _to_price_candle(previous_daily, daily=True),
@@ -329,6 +338,8 @@ def build_live_oracle_payload(
         atr_m1=atr_m1,
         m1_count=len(payload.m1_candles),
         m15_count=len(payload.m15_candles),
+        h1_count=len(payload.h1_candles or []),
+        h4_count=len(payload.h4_candles or []),
         daily_levels_count=len(payload.daily_candles_for_levels),
         daily_adr_count=len(payload.daily_candles_for_adr),
     )
@@ -406,11 +417,11 @@ def run_live_mt5_runner() -> None:
     cycle = 0
 
     logger.info(
-        "Runner startup | terminal_path=%s server=%s login=%s symbol=%s api_base_url=%s interval=%ss",
+        "Runner startup | terminal_path=%s server=%s login=%s symbols=%s api_base_url=%s interval=%ss",
         settings.mt5_terminal_path or "auto",
         settings.mt5_server or "default",
         settings.mt5_login if settings.mt5_login is not None else "unset",
-        settings.default_symbol,
+        ",".join(settings.runner_symbols),
         settings.api_base_url,
         interval_seconds,
     )
@@ -419,31 +430,80 @@ def run_live_mt5_runner() -> None:
         while True:
             cycle += 1
             cycle_started = time.monotonic()
-            logger.info("Runner heartbeat | cycle=%s symbol=%s status=starting", cycle, settings.default_symbol)
+            logger.info(
+                "Runner heartbeat | cycle=%s symbols=%s status=starting",
+                cycle,
+                ",".join(settings.runner_symbols),
+            )
 
             try:
                 if mt5 is None:
                     mt5 = _initialize_mt5(settings)
 
-                payload, snapshot = build_live_oracle_payload(mt5, settings)
-                logger.info(
-                    "Payload generated | symbol=%s current_price=%.5f prev_m15_close=%.5f atr_m1=%.5f m1=%s m15=%s d1_levels=%s d1_adr=%s",
-                    snapshot.symbol,
-                    snapshot.current_price,
-                    snapshot.prev_m15_close,
-                    snapshot.atr_m1,
-                    snapshot.m1_count,
-                    snapshot.m15_count,
-                    snapshot.daily_levels_count,
-                    snapshot.daily_adr_count,
-                )
+                any_success = False
+                any_waiting = False
+                any_failure = False
 
-                _post_oracle_with_retries(payload, settings)
+                for symbol in settings.runner_symbols:
+                    logger.info("Runner evaluating symbol=%s", symbol)
+                    try:
+                        payload, snapshot = build_live_oracle_payload(mt5, settings, symbol=symbol)
+                        logger.info(
+                            "Payload generated | symbol=%s current_price=%.5f prev_m15_close=%.5f atr_m1=%.5f m1=%s m15=%s h1=%s h4=%s d1_levels=%s d1_adr=%s",
+                            snapshot.symbol,
+                            snapshot.current_price,
+                            snapshot.prev_m15_close,
+                            snapshot.atr_m1,
+                            snapshot.m1_count,
+                            snapshot.m15_count,
+                            snapshot.h1_count,
+                            snapshot.h4_count,
+                            snapshot.daily_levels_count,
+                            snapshot.daily_adr_count,
+                        )
+                        _post_oracle_with_retries(payload, settings)
+                        any_success = True
+                    except RunnerSkipCycle as exc:
+                        any_waiting = True
+                        logger.warning(
+                            "Runner cycle waiting for live data | cycle=%s symbol=%s reason=%s",
+                            cycle,
+                            symbol,
+                            exc,
+                        )
+                    except Exception:
+                        any_failure = True
+                        logger.exception("Runner cycle failed | cycle=%s symbol=%s", cycle, symbol)
+
+                if any_success:
+                    elapsed = time.monotonic() - cycle_started
+                    sleep_for = max(0.0, interval_seconds - elapsed)
+                    logger.info("Runner heartbeat | cycle=%s status=ok next_run_in=%.1fs", cycle, sleep_for)
+                    time.sleep(sleep_for)
+                    continue
+
+                retry_sleep = min(interval_seconds, 10)
+                if any_waiting and not any_failure:
+                    logger.info(
+                        "Runner heartbeat | cycle=%s status=waiting_for_data next_run_in=%ss",
+                        cycle,
+                        retry_sleep,
+                    )
+                else:
+                    _shutdown_mt5(mt5)
+                    mt5 = None
+                    logger.info(
+                        "Runner heartbeat | cycle=%s status=retrying next_run_in=%ss",
+                        cycle,
+                        retry_sleep,
+                    )
+                time.sleep(retry_sleep)
+                continue
             except RunnerSkipCycle as exc:
                 logger.warning(
                     "Runner cycle waiting for live data | cycle=%s symbol=%s reason=%s",
                     cycle,
-                    settings.default_symbol,
+                    settings.normalized_default_symbol,
                     exc,
                 )
                 retry_sleep = min(interval_seconds, 10)
@@ -451,18 +511,17 @@ def run_live_mt5_runner() -> None:
                 time.sleep(retry_sleep)
                 continue
             except Exception:
-                logger.exception("Runner cycle failed | cycle=%s symbol=%s", cycle, settings.default_symbol)
+                logger.exception(
+                    "Runner cycle failed | cycle=%s symbols=%s",
+                    cycle,
+                    ",".join(settings.runner_symbols),
+                )
                 _shutdown_mt5(mt5)
                 mt5 = None
                 retry_sleep = min(interval_seconds, 10)
                 logger.info("Runner heartbeat | cycle=%s status=retrying next_run_in=%ss", cycle, retry_sleep)
                 time.sleep(retry_sleep)
                 continue
-
-            elapsed = time.monotonic() - cycle_started
-            sleep_for = max(0.0, interval_seconds - elapsed)
-            logger.info("Runner heartbeat | cycle=%s status=ok next_run_in=%.1fs", cycle, sleep_for)
-            time.sleep(sleep_for)
     except KeyboardInterrupt:
         logger.info("MT5 runner stopped by operator.")
     finally:

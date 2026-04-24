@@ -37,6 +37,14 @@ USER_COLUMN_DEFINITIONS = {
     "is_active": "BOOLEAN DEFAULT TRUE",
 }
 
+MARKET_STATE_COLUMN_DEFINITIONS = {
+    "current_price": "FLOAT",
+    "h1_liquidity": "TEXT",
+    "h4_liquidity": "TEXT",
+    "strongest_liquidity": "TEXT",
+    "htf_magnet_bias": "VARCHAR(20) DEFAULT 'neutral'",
+}
+
 
 def _ensure_columns(table_name: str, column_definitions: dict[str, str]) -> None:
     """Add newer columns to an existing table using dialect-safe inspection."""
@@ -69,6 +77,12 @@ def _ensure_user_columns() -> None:
     """Add newer user columns to an existing table when needed."""
 
     _ensure_columns("users", USER_COLUMN_DEFINITIONS)
+
+
+def _ensure_market_state_columns() -> None:
+    """Add newer market-state columns to an existing table when needed."""
+
+    _ensure_columns("market_state", MARKET_STATE_COLUMN_DEFINITIONS)
 
 
 def _is_auto_generated_id(column: dict[str, object], dialect_name: str) -> bool:
@@ -137,5 +151,6 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_signal_columns()
     _ensure_user_columns()
+    _ensure_market_state_columns()
     _warn_if_user_id_not_autoincrement()
     _seed_operator_user()

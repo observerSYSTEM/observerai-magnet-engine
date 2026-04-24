@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.core.symbols import normalize_symbol
 from app.models.signal import Signal
 from app.schemas.oracle import OracleEvaluateResponse
-from app.schemas.signal import SignalsLatestResponse, StoredSignalOut
+from app.schemas.signal import LatestSignalResponse, SignalsLatestResponse, StoredSignalOut
+from app.services.lifecycle_service import derive_signal_lifecycle
+
+logger = logging.getLogger(__name__)
 
 
 def _json_dump(value: Any) -> str | None:
@@ -32,6 +37,15 @@ def _resolve_direction(resolved_bias: str, action: str) -> str:
 
 
 def signal_row_to_stored_signal(row: Signal) -> StoredSignalOut:
+    intent = _json_load(row.intent) or {
+        "action": "WAIT",
+        "entry_type": "none",
+        "reason": "",
+        "target": None,
+        "stop_hint": None,
+    }
+    outcome = row.outcome
+
     return StoredSignalOut(
         symbol=row.symbol,
         current_price=row.current_price or row.close_price,
@@ -50,13 +64,12 @@ def signal_row_to_stored_signal(row: Signal) -> StoredSignalOut:
         structure=_json_load(row.structure),
         momentum=_json_load(row.momentum),
         mid_targets=_json_load(row.mid_targets),
-        intent=_json_load(row.intent) or {
-            "action": "WAIT",
-            "entry_type": "none",
-            "reason": "",
-            "target": None,
-            "stop_hint": None,
-        },
+        intent=intent,
+        lifecycle=derive_signal_lifecycle(
+            action=intent.get("action"),
+            outcome_status=outcome.outcome_status if outcome is not None else None,
+            closed_at=outcome.closed_at if outcome is not None else None,
+        ),
         confidence=row.confidence,
         message=row.message,
         created_at=row.created_at,
@@ -72,6 +85,7 @@ def get_previous_signal_candidate(db: Session, current_signal: Signal) -> Stored
 
     stmt = (
         select(Signal)
+        .options(selectinload(Signal.outcome))
         .where(
             Signal.symbol == current_signal.symbol,
             Signal.resolved_bias == current_signal.resolved_bias,
@@ -88,6 +102,7 @@ def get_previous_signal_candidate(db: Session, current_signal: Signal) -> Stored
 def save_evaluated_signal(db: Session, payload: OracleEvaluateResponse) -> Signal:
     """Persist an oracle evaluation using the existing signal table."""
 
+    symbol = normalize_symbol(payload.symbol)
     nearest = payload.nearest_magnet.model_dump() if payload.nearest_magnet else None
     major = payload.major_magnet.model_dump() if payload.major_magnet else None
     magnet_path = [magnet.model_dump() for magnet in payload.magnet_path]
@@ -99,7 +114,7 @@ def save_evaluated_signal(db: Session, payload: OracleEvaluateResponse) -> Signa
     direction = _resolve_direction(payload.resolved_bias, payload.intent.action)
 
     row = Signal(
-        symbol=payload.symbol,
+        symbol=symbol,
         timeframe="M15",
         event_type=payload.event_type,
         direction=direction,
@@ -132,15 +147,25 @@ def save_evaluated_signal(db: Session, payload: OracleEvaluateResponse) -> Signa
     db.add(row)
     db.commit()
     db.refresh(row)
+    logger.info(
+        "Signal stored | symbol=%s action=%s resolved_bias=%s event=%s confidence=%s",
+        row.symbol,
+        payload.intent.action,
+        payload.resolved_bias,
+        payload.event_type,
+        payload.confidence,
+    )
     return row
 
 
 def list_latest_signals(db: Session, symbol: str, limit: int = 20) -> SignalsLatestResponse:
     """Return stored oracle evaluations ordered from newest to oldest."""
 
+    normalized_symbol = normalize_symbol(symbol)
     stmt = (
         select(Signal)
-        .where(Signal.symbol == symbol)
+        .options(selectinload(Signal.outcome))
+        .where(Signal.symbol == normalized_symbol)
         .order_by(Signal.created_at.desc())
         .limit(limit)
     )
@@ -148,4 +173,12 @@ def list_latest_signals(db: Session, symbol: str, limit: int = 20) -> SignalsLat
 
     items = [signal_row_to_stored_signal(row) for row in rows]
 
-    return SignalsLatestResponse(symbol=symbol, count=len(items), items=items)
+    return SignalsLatestResponse(symbol=normalized_symbol, count=len(items), items=items)
+
+
+def get_latest_signal(db: Session, symbol: str) -> LatestSignalResponse:
+    """Return the newest stored signal for the requested symbol."""
+
+    latest = list_latest_signals(db, symbol, limit=1)
+    item = latest.items[0] if latest.items else None
+    return LatestSignalResponse(symbol=latest.symbol, item=item)

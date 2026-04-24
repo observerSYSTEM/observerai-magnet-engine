@@ -13,7 +13,9 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.init_db import init_db
 from app.api.dashboard import router as dashboard_router
+from app.api.ea import router as ea_router
 from app.api.ingest import router as ingest_router
+from app.api.liquidity import router as liquidity_router
 from app.api.oracle import router as oracle_router
 from app.api.performance import router as performance_router
 from app.api.signals import router as signals_router
@@ -33,7 +35,7 @@ app.add_middleware(
     allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-EA-API-Key"],
 )
 
 
@@ -93,6 +95,8 @@ app.include_router(billing_router)
 app.include_router(ingest_router)
 app.include_router(oracle_router)
 app.include_router(signals_router)
+app.include_router(ea_router)
+app.include_router(liquidity_router)
 app.include_router(performance_router)
 app.include_router(market_map_router)
 app.include_router(dashboard_router)

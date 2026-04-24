@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.symbols import DEFAULT_SYMBOL, normalize_symbol
 from app.core.rate_limit import rate_limit
 from app.schemas.oracle import (
     IntentOut,
@@ -42,8 +43,10 @@ from app.services.performance_service import (
     create_signal_outcome,
     evaluate_open_signal_outcomes,
 )
+from app.services.liquidity_engine import Candle as LiquidityCandle
+from app.services.market_state_service import upsert_market_state
 from app.services.signal_service import save_evaluated_signal
-from app.services.telegram_service import deliver_signal_alert
+from app.services.telegram_service import deliver_signal_alert, deliver_signal_outcome_alerts
 
 router = APIRouter()
 
@@ -95,11 +98,129 @@ def _to_mid_point(midpoint: MidPoint | None) -> MidPointOut | None:
     return MidPointOut(name=midpoint.name, price=midpoint.price)
 
 
+def _resolve_current_zone(anchor, current_price: float) -> str:
+    if anchor.value_low <= current_price <= anchor.value_high:
+        return "value"
+    if anchor.premium_low <= current_price <= anchor.premium_high:
+        return "premium"
+    if anchor.discount_low <= current_price <= anchor.discount_high:
+        return "discount"
+    return "outside_value"
+
+
+def _persist_market_state(
+    db: Session,
+    payload: OracleEvaluateRequest,
+    artifacts: OracleEvaluationArtifacts,
+) -> None:
+    symbol = artifacts.response.symbol
+    daily_for_levels = [
+        DailyLevelCandle(
+            time=candle.time,
+            open=candle.open,
+            high=candle.high,
+            low=candle.low,
+            close=candle.close,
+        )
+        for candle in payload.daily_candles_for_levels
+    ]
+    daily_for_adr = [
+        AdrDailyCandle(
+            time=candle.time,
+            open=candle.open,
+            high=candle.high,
+            low=candle.low,
+            close=candle.close,
+        )
+        for candle in payload.daily_candles_for_adr
+    ]
+    m1_candles = [
+        AnchorCandle(
+            time=candle.time.astimezone(timezone.utc),
+            open=candle.open,
+            high=candle.high,
+            low=candle.low,
+            close=candle.close,
+        )
+        for candle in payload.m1_candles
+    ]
+
+    levels = compute_daily_levels(symbol, daily_for_levels)
+    adr_state = compute_adr_state(
+        symbol=symbol,
+        completed_daily_candles=daily_for_adr,
+        day_open=levels.day_open,
+        current_price=payload.current_price,
+        lookback_days=5,
+    )
+    anchor_candle = get_london_0801_candle(m1_candles, _infer_trading_day_utc(payload))
+    anchor = compute_anchor_state(
+        symbol=symbol,
+        anchor_candle=anchor_candle,
+        atr_m1=payload.atr_m1,
+    )
+    h1_candles = (
+        [
+            LiquidityCandle(
+                time=candle.time,
+                open=candle.open,
+                high=candle.high,
+                low=candle.low,
+                close=candle.close,
+            )
+            for candle in payload.h1_candles
+        ]
+        if payload.h1_candles
+        else None
+    )
+    h4_candles = (
+        [
+            LiquidityCandle(
+                time=candle.time,
+                open=candle.open,
+                high=candle.high,
+                low=candle.low,
+                close=candle.close,
+            )
+            for candle in payload.h4_candles
+        ]
+        if payload.h4_candles
+        else None
+    )
+
+    upsert_market_state(
+        db,
+        symbol=symbol,
+        timestamp=datetime.utcnow(),
+        current_price=payload.current_price,
+        pdh=levels.pdh,
+        pdl=levels.pdl,
+        eq=levels.eq,
+        day_open=levels.day_open,
+        adr=adr_state.adr,
+        adr_high=adr_state.adr_high,
+        adr_low=adr_state.adr_low,
+        adr_used_pct=adr_state.adr_used_pct,
+        anchor_direction=anchor.anchor_direction,
+        anchor_type=anchor.anchor_type,
+        premium_low=anchor.premium_low,
+        premium_high=anchor.premium_high,
+        discount_low=anchor.discount_low,
+        discount_high=anchor.discount_high,
+        value_low=anchor.value_low,
+        value_high=anchor.value_high,
+        current_zone=_resolve_current_zone(anchor, payload.current_price),
+        bias=artifacts.response.bias,
+        h1_candles=h1_candles,
+        h4_candles=h4_candles,
+    )
+
+
 def _build_demo_request() -> OracleEvaluateRequest:
     """Build the demo payload used by the temporary GET endpoint."""
 
     return OracleEvaluateRequest(
-        symbol="XAUUSD",
+        symbol=DEFAULT_SYMBOL,
         current_price=3358.40,
         prev_m15_close=3350.10,
         m1_candles=[
@@ -159,6 +280,7 @@ def _build_demo_request() -> OracleEvaluateRequest:
 def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> OracleEvaluationArtifacts:
     """Run the full oracle evaluation and return persistence-friendly artifacts."""
 
+    payload = payload.model_copy(update={"symbol": normalize_symbol(payload.symbol)})
     daily_for_levels = [
         DailyLevelCandle(
             time=candle.time,
@@ -396,11 +518,12 @@ def evaluate_oracle_post(
     """Evaluate live oracle input supplied by the caller."""
 
     artifacts = _evaluate_oracle_payload_artifacts(payload)
-    evaluate_open_signal_outcomes(
+    closed_outcomes = evaluate_open_signal_outcomes(
         db,
-        symbol=payload.symbol,
-        current_price=payload.current_price,
+        symbol=artifacts.response.symbol,
+        current_price=artifacts.response.current_price,
     )
+    deliver_signal_outcome_alerts(db, closed_outcomes)
     saved_signal = save_evaluated_signal(db, artifacts.response)
     outcome_seed = build_signal_outcome_seed(
         response=artifacts.response,
@@ -409,5 +532,6 @@ def evaluate_oracle_post(
         m15_candles=artifacts.m15_candles,
     )
     create_signal_outcome(db, saved_signal, outcome_seed)
+    _persist_market_state(db, payload, artifacts)
     deliver_signal_alert(db, saved_signal)
     return artifacts.response

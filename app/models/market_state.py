@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, Float, Integer, String
+from sqlalchemy import DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -28,3 +28,8 @@ class MarketState(Base):
     value_high: Mapped[float] = mapped_column(Float, default=0)
     current_zone: Mapped[str] = mapped_column(String(50), default='neutral')
     bias: Mapped[str] = mapped_column(String(20), default='neutral')
+    current_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    h1_liquidity: Mapped[str | None] = mapped_column(Text, nullable=True)
+    h4_liquidity: Mapped[str | None] = mapped_column(Text, nullable=True)
+    strongest_liquidity: Mapped[str | None] = mapped_column(Text, nullable=True)
+    htf_magnet_bias: Mapped[str] = mapped_column(String(20), default='neutral')

@@ -36,7 +36,7 @@ MT5_LOGIN=12345678
 MT5_PASSWORD=your_password
 MT5_SERVER=YourBroker-Demo
 MT5_TERMINAL_PATH=C:\Program Files\MetaTrader 5\terminal64.exe
-API_BASE_URL=http://127.0.0.1:8000
+API_BASE_URL=https://observerai-magnet-engine.onrender.com
 RUNNER_INTERVAL_SECONDS=60
 DEFAULT_SYMBOL=XAUUSD
 ```

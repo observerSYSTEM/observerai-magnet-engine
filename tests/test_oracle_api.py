@@ -5,6 +5,7 @@ from uuid import uuid4
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.api.ea import ea_latest_signal
 from app.api.oracle import evaluate_oracle, evaluate_oracle_post
 from app.api.signals import latest_signals
 from app.db.base import Base
@@ -174,4 +175,35 @@ def test_oracle_post_stores_signal_and_latest_returns_it():
     assert latest["items"][0]["momentum"] == stored["momentum"]
     assert latest["items"][0]["mid_targets"] == stored["mid_targets"]
     assert latest["items"][0]["intent"] == stored["intent"]
+    assert latest["items"][0]["lifecycle"]["state"] == "Setup Confirmed"
+    assert latest["items"][0]["lifecycle"]["outcome_status"] == "open"
+    assert latest["items"][0]["lifecycle"]["target_hit"] is False
+    assert latest["items"][0]["lifecycle"]["invalidated"] is False
     assert latest["items"][0]["confidence"] == stored["confidence"]
+
+
+def test_oracle_post_stores_requested_symbol_and_ea_route_returns_it():
+    db_path, engine, TestingSessionLocal = _build_test_db()
+    try:
+        gbpjpy_request = _sample_oracle_request().model_copy(update={"symbol": "GBPJPY"})
+        with TestingSessionLocal() as db:
+            stored = evaluate_oracle_post(gbpjpy_request, db=db).model_dump()
+            gbpjpy_latest = latest_signals(symbol="GBPJPY", db=db).model_dump()
+            xau_latest = latest_signals(symbol="XAUUSD", db=db).model_dump()
+            ea_payload = ea_latest_signal(symbol="GBPJPY", db=db).model_dump()
+    finally:
+        _cleanup_test_db(db_path, engine)
+
+    assert stored["symbol"] == "GBPJPY"
+    assert gbpjpy_latest["symbol"] == "GBPJPY"
+    assert gbpjpy_latest["count"] == 1
+    assert gbpjpy_latest["items"][0]["symbol"] == "GBPJPY"
+    assert xau_latest["symbol"] == "XAUUSD"
+    assert xau_latest["count"] == 0
+    assert ea_payload["symbol"] == "GBPJPY"
+    assert ea_payload["action"] in {"BUY", "SELL"}
+    assert ea_payload["bias"] in {"bullish_continuation", "bearish_continuation", "bullish_reversal", "bearish_reversal"}
+    assert ea_payload["tradeable"] is True
+    assert ea_payload["lifecycle"] == "setup_confirmed"
+    assert ea_payload["nearest_magnet"] is not None
+    assert ea_payload["major_magnet"] is not None

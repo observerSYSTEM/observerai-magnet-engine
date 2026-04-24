@@ -15,70 +15,82 @@ type CreateCheckoutSessionResponse = {
 
 const PRO_PRICE_ID = "price_1TOJizJnivDywsdRuatzdkRC";
 
+const TRUST_ITEMS = [
+  "Live MT5 input",
+  "Bias + magnet logic",
+  "Telegram-ready alerts",
+  "Outcome tracking",
+];
+
 const FEATURES = [
   {
-    title: "Signal intelligence, not random alerts",
+    title: "Structured Signals",
     description:
-      "Every setup is shaped by London-session structure, liquidity, and momentum so the signal has context before it reaches you.",
+      "Bias, targets, magnets, and trade intent are resolved into a clean signal view that is easy to act on.",
   },
   {
-    title: "Actionable output",
+    title: "Liquidity Magnets",
     description:
-      "See the direction, target, and signal intent clearly so decisions feel deliberate instead of rushed.",
+      "Signals stay grounded in visible draws and session structure rather than one-dimensional direction calls.",
   },
   {
-    title: "Live delivery",
+    title: "Telegram Delivery",
     description:
-      "Move from evaluation to dashboard visibility and Telegram-ready delivery without extra operational glue.",
+      "Alerts are delivered in a concise, trader-friendly format that keeps the context readable in real time.",
   },
   {
-    title: "Performance tracking built in",
+    title: "Performance Tracking",
     description:
-      "Track open outcomes, target hits, invalidations, and measurable follow-through after the signal is sent.",
+      "Every stored signal can be reviewed against outcomes, follow-through, and overall strategy performance.",
   },
 ];
 
 const STEPS = [
   {
-    title: "Ingest",
+    title: "Ingest market data",
     description:
-      "Pull fresh MT5 market data into a signal engine built specifically for XAUUSD session behavior.",
+      "Pull live MT5 candles, price, and volatility into one evaluation flow.",
   },
   {
-    title: "Evaluate",
+    title: "Evaluate context",
     description:
-      "Resolve structure, bias, magnets, intent, and confidence so the output carries reasoning, not just direction.",
+      "Resolve structure, bias, magnets, targets, and confidence in a single pass.",
   },
   {
-    title: "Deliver & Track",
+    title: "Deliver signal",
     description:
-      "Push the signal into your operator workflow and measure how it performs after it reaches the market.",
+      "Publish the signal to the dashboard and Telegram without extra manual steps.",
+  },
+  {
+    title: "Track outcome",
+    description:
+      "Store the result so signal quality can be reviewed over time.",
   },
 ];
 
 const PRICING = [
   {
     name: "Pro",
-    tag: "Available now",
+    badge: "Available now",
     description:
-      "Real-time signal generation, dashboard access, Telegram delivery, outcome tracking, performance metrics.",
+      "Real-time signal generation, dashboard access, Telegram delivery, and measurable outcome tracking.",
     bullets: [
-      "Real-time signal generation",
-      "Dashboard access",
+      "Real-time XAUUSD signal evaluation",
+      "Live dashboard access",
       "Telegram delivery",
-      "Outcome tracking",
-      "Performance metrics",
+      "Outcome and performance tracking",
     ],
   },
   {
     name: "Elite",
-    tag: "Coming soon",
+    badge: "Coming soon",
     description:
-      "Advanced filtering, multi-symbol support, and deeper analytics for traders who want a broader operating view.",
+      "Expanded coverage, deeper filtering, and a broader operating view for more advanced workflows.",
     bullets: [
-      "Advanced filtering",
+      "Advanced signal filtering",
       "Multi-symbol support",
       "Deeper analytics",
+      "Expanded review tooling",
     ],
   },
 ];
@@ -162,181 +174,23 @@ export default function HomePage() {
     <main className={styles.page}>
       <div className={styles.shell}>
         <nav className={styles.nav}>
-          <div className={styles.brand}>
-            <span className={styles.eyebrow}>ObserverAI Magnet Engine</span>
-            <strong className={styles.brandTitle}>
-              High-context XAUUSD signal infrastructure
-            </strong>
-          </div>
+          <span className={styles.brand}>ObserverAI Magnet Engine</span>
           <div className={styles.navLinks}>
             <a href="#features">Features</a>
-            <a href="#how-it-works">How it works</a>
             <a href="#pricing">Pricing</a>
             <a href={dashboardHref}>Dashboard</a>
           </div>
         </nav>
 
         <section className={styles.hero}>
-          <article className={styles.heroCard}>
-            <div className={styles.heroCopy}>
-              <span className={styles.eyebrow}>ObserverAI Magnet Engine</span>
-              <h1 className={styles.heroTitle}>
-                High-context XAUUSD signals with real-time delivery and measurable
-                performance.
-              </h1>
-              <p className={styles.heroLead}>
-                Built around London-session structure, liquidity, and momentum,
-                so you&apos;re not just getting alerts, you&apos;re getting context,
-                targets, and outcomes you can track.
-              </p>
-              <p className={styles.heroSubcopy}>
-                Designed for traders who want signal quality to feel composed,
-                operator-ready, and accountable after the alert is sent.
-              </p>
-              <div className={styles.buttonRow}>
-                <button
-                  className={`${styles.primaryButton} ${
-                    isLoading ? styles.buttonDisabled : ""
-                  }`}
-                  type="button"
-                  onClick={handleStartPro}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Starting Checkout..." : "Start with Pro"}
-                </button>
-                <a className={styles.secondaryButton} href={dashboardHref}>
-                  View Live Dashboard
-                </a>
-              </div>
-              <div className={styles.checkoutMeta}>
-                <div className={statusClassName}>{checkoutState.message}</div>
-                <div className={styles.priceNote}>
-                  Stripe note: replace <code>{PRO_PRICE_ID}</code> with your live
-                  Stripe Price ID before launch.
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <aside className={`${styles.heroCard} ${styles.heroAside}`}>
-            <span className={styles.eyebrow}>Premium Positioning</span>
-            <h2>Built for traders who prefer clarity over noise.</h2>
-            <p>
-              ObserverAI Magnet Engine is for desks and independent traders who
-              want structure over guesswork, signals backed by logic, and
-              performance they can measure over time.
-            </p>
-            <div className={styles.signalPulse}>
-              <div className={styles.signalTagRow}>
-                <span className={styles.signalTag}>Context</span>
-                <span className={styles.signalTag}>Delivery</span>
-                <span className={styles.signalTag}>Performance</span>
-              </div>
-              <p>
-                From live MT5 inputs to a trader-facing output, the experience
-                stays focused on what matters: where the signal sits, why it
-                matters, and how it performed afterward.
-              </p>
-            </div>
-          </aside>
-        </section>
-
-        <section className={styles.trustStrip}>
-          <span className={styles.eyebrow}>Trust / Positioning</span>
-          <p>
-            Designed for traders who want clarity over noise, structure over
-            guesswork, signals backed by logic, and performance they can
-            measure.
-          </p>
-        </section>
-
-        <section id="features" className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.eyebrow}>Features</span>
-            <h2>Signal quality that feels composed before it reaches the desk.</h2>
-            <p>
-              Premium signal tooling should reduce hesitation, not create more
-              of it. Each layer is tuned to make the output clearer, more usable,
-              and easier to monitor.
-            </p>
-          </div>
-          <div className={styles.featureGrid}>
-            {FEATURES.map((feature) => (
-              <article key={feature.title} className={styles.card}>
-                <h3 className={styles.cardTitle}>{feature.title}</h3>
-                <p className={styles.cardBody}>{feature.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="how-it-works" className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.eyebrow}>How it works</span>
-            <h2>Three steps from market input to accountable signal delivery.</h2>
-            <p>
-              The workflow is intentionally simple: bring the market in, evaluate
-              it with structure, then deliver and track what happened next.
-            </p>
-          </div>
-          <div className={styles.howGrid}>
-            {STEPS.map((step, index) => (
-              <article key={step.title} className={styles.card}>
-                <span className={styles.stepNumber}>{index + 1}</span>
-                <h3 className={styles.cardTitle}>{step.title}</h3>
-                <p className={styles.cardBody}>{step.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="pricing" className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.eyebrow}>Pricing</span>
-            <h2>Start with the tier that gets signals into motion quickly.</h2>
-            <p>
-              Keep the buying decision clean. Pro is the immediate path. Elite
-              expands the operating surface when you want more coverage and
-              deeper analysis.
-            </p>
-          </div>
-          <div className={styles.pricingGrid}>
-            {PRICING.map((tier) => (
-              <article key={tier.name} className={`${styles.card} ${styles.pricingTier}`}>
-                <div className={styles.pricingHeader}>
-                  <h3 className={styles.cardTitle}>{tier.name}</h3>
-                  <span className={styles.tierTag}>{tier.tag}</span>
-                </div>
-                <p className={styles.cardBody}>{tier.description}</p>
-                <ul className={styles.pricingList}>
-                  {tier.bullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-                {tier.name === "Pro" ? (
-                  <button
-                    className={`${styles.primaryButton} ${
-                      isLoading ? styles.buttonDisabled : ""
-                    }`}
-                    type="button"
-                    onClick={handleStartPro}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Starting Checkout..." : "Start with Pro"}
-                  </button>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.section}>
-          <article className={`${styles.card} ${styles.finalCta}`}>
-            <span className={styles.eyebrow}>Final CTA</span>
-            <h2>Start tracking high-context XAUUSD signals today.</h2>
-            <p>
-              Launch with a clean Pro entry point, keep the offer focused, and
-              send traders from premium positioning straight into Stripe Checkout.
+          <div className={styles.heroCopy}>
+            <span className={styles.eyebrow}>Structured Trading Intelligence</span>
+            <h1 className={styles.heroTitle}>
+              High-context XAUUSD signals, delivered with structure.
+            </h1>
+            <p className={styles.heroLead}>
+              ObserverAI turns live market data into structured trading alerts
+              with bias, magnets, targets, and performance tracking.
             </p>
             <div className={styles.buttonRow}>
               <button
@@ -353,9 +207,157 @@ export default function HomePage() {
                 View Live Dashboard
               </a>
             </div>
-            <div className={styles.priceNote}>
-              Replace <code>{PRO_PRICE_ID}</code> before launch so checkout points
-              to the live Stripe subscription price.
+            <div className={styles.checkoutMeta}>
+              <div className={statusClassName}>{checkoutState.message}</div>
+            </div>
+          </div>
+
+          <aside className={styles.heroPanel}>
+            <span className={styles.panelLabel}>Operator View</span>
+            <div className={styles.panelRows}>
+              <div className={styles.panelRow}>
+                <span>Market</span>
+                <strong>XAUUSD / M15</strong>
+              </div>
+              <div className={styles.panelRow}>
+                <span>Signal Output</span>
+                <strong>Bias, magnets, target</strong>
+              </div>
+              <div className={styles.panelRow}>
+                <span>Delivery</span>
+                <strong>Dashboard + Telegram</strong>
+              </div>
+              <div className={styles.panelRow}>
+                <span>Review</span>
+                <strong>Outcome tracking</strong>
+              </div>
+            </div>
+            <p className={styles.panelNote}>
+              Built for traders who want the alert to arrive with enough context
+              to be useful, not noisy.
+            </p>
+          </aside>
+        </section>
+
+        <section className={styles.trustStrip} aria-label="Trust strip">
+          {TRUST_ITEMS.map((item) => (
+            <div key={item} className={styles.trustItem}>
+              <span className={styles.trustDot} aria-hidden="true" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </section>
+
+        <section id="features" className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.eyebrow}>Features</span>
+            <h2>Focused tooling for signal clarity.</h2>
+            <p>
+              The product stays intentionally compact: clear evaluation,
+              readable delivery, and measurable follow-through.
+            </p>
+          </div>
+          <div className={styles.featureGrid}>
+            {FEATURES.map((feature) => (
+              <article key={feature.title} className={styles.card}>
+                <span className={styles.cardLabel}>Core Layer</span>
+                <h3 className={styles.cardTitle}>{feature.title}</h3>
+                <p className={styles.cardBody}>{feature.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="how-it-works" className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.eyebrow}>How It Works</span>
+            <h2>A simple flow from input to review.</h2>
+          </div>
+          <div className={styles.stepGrid}>
+            {STEPS.map((step, index) => (
+              <article key={step.title} className={styles.stepCard}>
+                <span className={styles.stepNumber}>0{index + 1}</span>
+                <h3 className={styles.cardTitle}>{step.title}</h3>
+                <p className={styles.cardBody}>{step.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="pricing" className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.eyebrow}>Pricing</span>
+            <h2>Choose the operating tier that fits now.</h2>
+            <p>
+              Start with Pro for live delivery and tracking. Elite expands the
+              workflow when broader coverage is needed.
+            </p>
+          </div>
+          <div className={styles.pricingGrid}>
+            {PRICING.map((tier) => (
+              <article
+                key={tier.name}
+                className={`${styles.card} ${styles.pricingCard} ${
+                  tier.name === "Pro" ? styles.pricingFeatured : ""
+                }`}
+              >
+                <div className={styles.pricingHeader}>
+                  <div className={styles.pricingTitleGroup}>
+                    <h3 className={styles.cardTitle}>{tier.name}</h3>
+                    <p className={styles.cardBody}>{tier.description}</p>
+                  </div>
+                  <span className={styles.badge}>{tier.badge}</span>
+                </div>
+                <ul className={styles.pricingList}>
+                  {tier.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+                {tier.name === "Pro" ? (
+                  <button
+                    className={`${styles.primaryButton} ${
+                      isLoading ? styles.buttonDisabled : ""
+                    }`}
+                    type="button"
+                    onClick={handleStartPro}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Starting Checkout..." : "Start with Pro"}
+                  </button>
+                ) : (
+                  <span className={styles.comingSoon}>
+                    Elite release in preparation.
+                  </span>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <article className={styles.finalCta}>
+            <div className={styles.finalCtaCopy}>
+              <span className={styles.eyebrow}>Get Started</span>
+              <h2>Start tracking structured XAUUSD signals today.</h2>
+              <p>
+                Keep the workflow simple: evaluate, deliver, and measure signal
+                quality in one place.
+              </p>
+            </div>
+            <div className={styles.finalCtaActions}>
+              <button
+                className={`${styles.primaryButton} ${
+                  isLoading ? styles.buttonDisabled : ""
+                }`}
+                type="button"
+                onClick={handleStartPro}
+                disabled={isLoading}
+              >
+                {isLoading ? "Starting Checkout..." : "Start with Pro"}
+              </button>
+              <a className={styles.secondaryButton} href={dashboardHref}>
+                View Live Dashboard
+              </a>
             </div>
           </article>
         </section>

@@ -37,6 +37,8 @@ class OracleEvaluateRequest(BaseModel):
     prev_m15_close: float
     m1_candles: list[OracleTimedCandleIn] = Field(min_length=1, max_length=2000)
     m15_candles: list[OraclePriceCandleIn] = Field(min_length=1, max_length=500)
+    h1_candles: list[OraclePriceCandleIn] | None = Field(default=None, max_length=1000)
+    h4_candles: list[OraclePriceCandleIn] | None = Field(default=None, max_length=500)
     daily_candles_for_levels: list[OraclePriceCandleIn] = Field(min_length=2, max_length=10)
     daily_candles_for_adr: list[OraclePriceCandleIn] = Field(min_length=5, max_length=30)
     atr_m1: float = Field(gt=0)

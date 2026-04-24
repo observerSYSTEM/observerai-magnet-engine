@@ -7,6 +7,7 @@ from typing import Literal, Protocol, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.symbols import normalize_symbol
 from app.models.signal import Signal
 from app.models.signal_outcome import SignalOutcome
 from app.schemas.oracle import OracleEvaluateResponse
@@ -190,8 +191,10 @@ def evaluate_open_signal_outcomes(
         .order_by(Signal.created_at.asc())
     )
     rows = list(db.execute(stmt))
+    changed_outcomes: list[SignalOutcome] = []
 
     for outcome, signal_created_at in rows:
+        previous_status = outcome.outcome_status
         favorable, adverse = _compute_excursions(
             action=outcome.action,
             entry_price=outcome.entry_price,
@@ -203,21 +206,20 @@ def evaluate_open_signal_outcomes(
         if _is_target_hit(outcome, current_price):
             outcome.outcome_status = "target_hit"
             outcome.closed_at = observed_time
-            continue
-
-        if _is_invalidated(outcome, current_price):
+        elif _is_invalidated(outcome, current_price):
             outcome.outcome_status = "invalidated"
             outcome.closed_at = observed_time
-            continue
-
-        if observed_time >= signal_created_at + timedelta(hours=SIGNAL_EXPIRY_HOURS):
+        elif observed_time >= signal_created_at + timedelta(hours=SIGNAL_EXPIRY_HOURS):
             outcome.outcome_status = "expired"
             outcome.closed_at = observed_time
+
+        if outcome.outcome_status != previous_status:
+            changed_outcomes.append(outcome)
 
     if rows:
         db.commit()
 
-    return [outcome for outcome, _ in rows]
+    return changed_outcomes
 
 
 def signal_outcome_to_schema(outcome: SignalOutcome) -> StoredSignalOutcomeOut:
@@ -243,22 +245,24 @@ def list_performance_signals(
 ) -> PerformanceSignalsResponse:
     """Return stored signal outcomes ordered from newest signal to oldest."""
 
+    normalized_symbol = normalize_symbol(symbol)
     stmt = (
         select(SignalOutcome)
         .join(Signal, Signal.id == SignalOutcome.signal_id)
-        .where(SignalOutcome.symbol == symbol)
+        .where(SignalOutcome.symbol == normalized_symbol)
         .order_by(Signal.created_at.desc())
         .limit(limit)
     )
     rows = list(db.scalars(stmt))
     items = [signal_outcome_to_schema(row) for row in rows]
-    return PerformanceSignalsResponse(symbol=symbol, count=len(items), items=items)
+    return PerformanceSignalsResponse(symbol=normalized_symbol, count=len(items), items=items)
 
 
 def get_performance_summary(db: Session, *, symbol: str) -> PerformanceSummaryResponse:
     """Aggregate performance statistics for stored signal outcomes."""
 
-    stmt = select(SignalOutcome).where(SignalOutcome.symbol == symbol)
+    normalized_symbol = normalize_symbol(symbol)
+    stmt = select(SignalOutcome).where(SignalOutcome.symbol == normalized_symbol)
     rows = list(db.scalars(stmt))
 
     total = len(rows)
@@ -272,7 +276,7 @@ def get_performance_summary(db: Session, *, symbol: str) -> PerformanceSummaryRe
     avg_mae = round(sum(row.mae for row in rows) / total, 5) if total else 0.0
 
     return PerformanceSummaryResponse(
-        symbol=symbol,
+        symbol=normalized_symbol,
         total_signals=total,
         open_signals=open_signals,
         closed_signals=closed_signals,

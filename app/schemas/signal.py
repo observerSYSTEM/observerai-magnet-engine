@@ -13,6 +13,16 @@ from app.schemas.oracle import (
 )
 
 
+class SignalLifecycleOut(BaseModel):
+    state: str
+    outcome_status: str
+    tracking_enabled: bool
+    target_hit: bool
+    invalidated: bool
+    expired: bool
+    closed_at: datetime | None = None
+
+
 class StoredSignalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,6 +44,7 @@ class StoredSignalOut(BaseModel):
     momentum: Optional[MomentumOut] = None
     mid_targets: Optional[MidTargetsOut] = None
     intent: IntentOut
+    lifecycle: SignalLifecycleOut
     confidence: int
     message: str
     created_at: datetime
@@ -43,3 +54,36 @@ class SignalsLatestResponse(BaseModel):
     symbol: str
     count: int
     items: list[StoredSignalOut]
+
+
+class LatestSignalResponse(BaseModel):
+    symbol: str
+    item: Optional[StoredSignalOut] = None
+
+
+class EaLatestSignalResponse(BaseModel):
+    symbol: str
+    action: Optional[str] = None
+    bias: Optional[str] = None
+    confidence: Optional[int] = None
+    price: Optional[float] = None
+    target: Optional[float] = None
+    stop_hint: Optional[str] = None
+    nearest_magnet: Optional[str] = None
+    major_magnet: Optional[str] = None
+    tradeable: bool
+    lifecycle: Optional[str] = None
+    created_at: datetime | None = None
+    message: Optional[str] = None
+
+
+class BestSignalResponse(BaseModel):
+    symbol: Optional[str] = None
+    action: Optional[str] = None
+    bias: Optional[str] = None
+    confidence: Optional[int] = None
+    price: Optional[float] = None
+    target: Optional[float] = None
+    tradeable: bool
+    reason: Optional[str] = None
+    message: Optional[str] = None

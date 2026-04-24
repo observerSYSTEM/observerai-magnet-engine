@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import require_admin_access
 from app.core.config import get_settings
+from app.core.symbols import DEFAULT_SYMBOL
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.models.user import User
@@ -38,7 +39,8 @@ def admin_runner_status(
 ) -> dict[str, object]:
     settings = get_settings()
     return {
-        "default_symbol": settings.default_symbol,
+        "default_symbol": settings.normalized_default_symbol,
+        "symbols": settings.runner_symbols,
         "mt5_configured": bool(
             settings.mt5_login is not None
             and settings.mt5_server
@@ -54,7 +56,7 @@ def admin_runner_status(
     dependencies=[Depends(rate_limit("admin_signals_latest", limit=60, window_seconds=60))],
 )
 def admin_latest_signals(
-    symbol: str = "XAUUSD",
+    symbol: str = DEFAULT_SYMBOL,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     _: User = Depends(require_admin_access),
     db: Session = Depends(get_db),

@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.symbols import DEFAULT_SYMBOL, SUPPORTED_SYMBOLS, is_supported_symbol, normalize_symbol, parse_symbol_list
+
 DEFAULT_AUTH_JWT_SECRET = 'change-me-observerai-jwt-secret'
 
 
@@ -32,7 +34,9 @@ class Settings(BaseSettings):
     operator_password: str = Field(default='', alias='OPERATOR_PASSWORD')
     operator_role: Literal['viewer', 'pro', 'elite', 'admin'] = Field(default='admin', alias='OPERATOR_ROLE')
     runner_interval_seconds: int = Field(default=60, alias='RUNNER_INTERVAL_SECONDS')
-    default_symbol: str = Field(default='XAUUSD', alias='DEFAULT_SYMBOL')
+    default_symbol: str = Field(default=DEFAULT_SYMBOL, alias='DEFAULT_SYMBOL')
+    symbols_raw: str = Field(default=",".join(SUPPORTED_SYMBOLS), alias='SYMBOLS')
+    ea_api_key: str = Field(default='', alias='EA_API_KEY')
     london_utc_offset: int = Field(default=0, alias='LONDON_UTC_OFFSET')
     adr_lookback_days: int = Field(default=5, alias='ADR_LOOKBACK_DAYS')
 
@@ -57,6 +61,15 @@ class Settings(BaseSettings):
     def operator_bootstrap_configured(self) -> bool:
         return bool(self.operator_email and self.operator_password)
 
+    @property
+    def normalized_default_symbol(self) -> str:
+        return normalize_symbol(self.default_symbol)
+
+    @property
+    def runner_symbols(self) -> list[str]:
+        symbols = parse_symbol_list(self.symbols_raw, fallback=SUPPORTED_SYMBOLS)
+        return symbols or [self.normalized_default_symbol]
+
     @staticmethod
     def _validate_origin(origin: str, *, production: bool) -> None:
         parsed = urlparse(origin)
@@ -72,6 +85,18 @@ class Settings(BaseSettings):
             raise RuntimeError('AUTH_ACCESS_TOKEN_EXPIRE_MINUTES must be greater than 0.')
         if self.runner_interval_seconds <= 0:
             raise RuntimeError('RUNNER_INTERVAL_SECONDS must be greater than 0.')
+        if not is_supported_symbol(self.normalized_default_symbol):
+            raise RuntimeError(
+                f'DEFAULT_SYMBOL must be one of {", ".join(SUPPORTED_SYMBOLS)}.'
+            )
+
+        invalid_runner_symbols = [
+            symbol for symbol in self.runner_symbols if not is_supported_symbol(symbol)
+        ]
+        if invalid_runner_symbols:
+            raise RuntimeError(
+                f'SYMBOLS contains unsupported values: {", ".join(invalid_runner_symbols)}.'
+            )
 
         has_operator_email = bool(self.operator_email)
         has_operator_password = bool(self.operator_password)

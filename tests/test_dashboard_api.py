@@ -1,33 +1,31 @@
 from app.api.dashboard import signals_dashboard
 
 
-def test_signals_dashboard_contains_signals_consumer():
+def test_signals_dashboard_contains_multi_symbol_lifecycle_consumer():
     response = signals_dashboard()
     body = response.body.decode("utf-8")
 
+    assert "/signals/best" in body
     assert "/signals/latest" in body
-    assert "/performance/summary" in body
+    assert "/liquidity/magnets" in body
     assert "Signals Dashboard" in body
-    assert "Performance Summary" in body
-    assert "formatAge" in body
-    assert "renderPerformance" in body
-    assert "anchor_type" in body
-    assert "adr_state" in body
-    assert "Nearest Magnet" in body
-    assert "Major Magnet" in body
-    assert "Structure Type" in body
-    assert "Structure Direction" in body
-    assert "Sweep Type" in body
-    assert "Sweep Strength" in body
-    assert "Momentum Class" in body
-    assert "Momentum Direction" in body
-    assert "Mid Flow" in body
-    assert "Current Mid" in body
-    assert "Next Mid" in body
-    assert "No valid mid" in body
-    assert "Magnet Path" in body
-    assert "signal.magnet_path" in body
-    assert "signal.mid_targets" in body
-    assert "No tracked outcomes yet" in body
-    assert "Performance unavailable" in body
-    assert "setInterval(loadSignals, 15000)" in body
+    assert "Best Signal Now" in body
+    assert "Strongest Liquidity Magnet" in body
+    assert "Swing Liquidity" in body
+    assert "H1 Magnets" in body
+    assert "H4 Magnets" in body
+    assert "Scalping Signals" in body
+    assert "SUPPORTED_SYMBOLS" in body
+    assert "XAUUSD" in body
+    assert "BTCUSD" in body
+    assert "GBPJPY" in body
+    assert "Next M15 close in:" in body
+    assert "No signals yet for this symbol." in body
+    assert "Lifecycle" in body
+    assert "Tradeable" in body
+    assert "Not Tradeable" in body
+    assert "formatLifecycle" in body
+    assert "humanizeLabel" in body
+    assert "renderStrongestLiquidity" in body
+    assert "setInterval(loadDashboard, REFRESH_INTERVAL_MS)" in body
+    assert "setInterval(updateM15Timer, 1000)" in body

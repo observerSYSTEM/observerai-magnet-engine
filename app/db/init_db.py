@@ -43,6 +43,7 @@ MARKET_STATE_COLUMN_DEFINITIONS = {
     "h4_liquidity": "TEXT",
     "strongest_liquidity": "TEXT",
     "htf_magnet_bias": "VARCHAR(20) DEFAULT 'neutral'",
+    "v2_snapshot": "TEXT",
 }
 
 

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.market_state import MarketState
 from app.schemas.liquidity import LiquidityMagnetOut, LiquidityMagnetsResponse
+from app.schemas.v2 import HtfContextOut, V2IntelligenceResponse
 from app.services.liquidity_engine import Candle, LiquiditySnapshot, compute_liquidity_snapshot
 
 
@@ -107,6 +108,7 @@ def upsert_market_state(
     bias: str,
     h1_candles: list[Candle] | None = None,
     h4_candles: list[Candle] | None = None,
+    v2_snapshot: dict | None = None,
 ) -> MarketState:
     h1_snapshot = (
         compute_liquidity_snapshot(
@@ -162,10 +164,52 @@ def upsert_market_state(
     row.h4_liquidity = _json_dump(_snapshot_to_payload(h4_snapshot) if h4_snapshot else None)
     row.strongest_liquidity = _json_dump(_strongest_liquidity(h1_snapshot, h4_snapshot))
     row.htf_magnet_bias = _resolve_htf_bias(h1_snapshot, h4_snapshot)
+    row.v2_snapshot = _json_dump(v2_snapshot)
 
     db.commit()
     db.refresh(row)
     return row
+
+
+def get_market_state_row(db: Session, symbol: str) -> MarketState | None:
+    return db.scalar(select(MarketState).where(MarketState.symbol == symbol))
+
+
+def get_v2_intelligence(db: Session, symbol: str) -> V2IntelligenceResponse | None:
+    row = get_market_state_row(db, symbol)
+    if row is None or not row.v2_snapshot:
+        return None
+
+    snapshot = _json_load(row.v2_snapshot)
+    if not snapshot:
+        return None
+
+    return V2IntelligenceResponse.model_validate(snapshot)
+
+
+def get_htf_context(db: Session, symbol: str, action: str | None) -> HtfContextOut | None:
+    row = get_market_state_row(db, symbol)
+    if row is None:
+        return None
+
+    strongest = _json_load(row.strongest_liquidity)
+    strongest_price = None
+    if strongest and isinstance(strongest, dict):
+        strongest_price = strongest.get("price")
+
+    normalized_action = (action or "").upper()
+    if normalized_action == "BUY":
+        alignment = "aligned" if row.htf_magnet_bias == "bullish" else "against" if row.htf_magnet_bias == "bearish" else "mixed"
+    elif normalized_action == "SELL":
+        alignment = "aligned" if row.htf_magnet_bias == "bearish" else "against" if row.htf_magnet_bias == "bullish" else "mixed"
+    else:
+        alignment = "mixed"
+
+    return HtfContextOut(
+        bias=row.htf_magnet_bias or "neutral",
+        strongest_magnet=strongest_price,
+        alignment=alignment,
+    )
 
 
 def get_liquidity_magnets(

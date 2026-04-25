@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.schemas.signal import BestSignalResponse, EaLatestSignalResponse, LatestSignalResponse, StoredSignalOut
+from app.services.market_state_service import get_htf_context
 from app.services.signal_service import list_latest_signals
 from app.utils.dedupe import ALERT_COOLDOWN_WINDOW, CONFIDENCE_CHANGE_THRESHOLD, signal_key
 
@@ -218,5 +219,6 @@ def get_latest_ea_signal(db: Session, symbol: str) -> EaLatestSignalResponse:
         major_magnet=_compact_magnet(signal.major_magnet),
         tradeable=True,
         lifecycle=_compact_lifecycle(signal.lifecycle.state),
+        htf_context=get_htf_context(db, signal.symbol, signal.intent.action),
         created_at=signal.created_at,
     )

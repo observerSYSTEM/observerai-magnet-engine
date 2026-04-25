@@ -11,6 +11,7 @@ from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.symbols import normalize_symbol
 from app.services.anchor_engine import london_time_to_utc
+from app.services.mt5_symbols import get_mt5_module, resolve_broker_symbol
 from app.schemas.oracle import (
     OracleEvaluateRequest,
     OracleEvaluateResponse,
@@ -38,6 +39,7 @@ class RunnerSkipCycle(RuntimeError):
 @dataclass(frozen=True)
 class RunnerSnapshot:
     symbol: str
+    broker_symbol: str
     current_price: float
     prev_m15_close: float
     atr_m1: float
@@ -47,17 +49,6 @@ class RunnerSnapshot:
     h4_count: int
     daily_levels_count: int
     daily_adr_count: int
-
-
-def _get_mt5_module() -> Any:
-    try:
-        import MetaTrader5 as mt5
-    except ImportError as exc:
-        raise RuntimeError(
-            "MetaTrader5 package is required for the live runner. Install it from requirements-runner-py313.txt."
-        ) from exc
-    return mt5
-
 
 def _utc_from_timestamp(timestamp: int | float) -> datetime:
     return datetime.fromtimestamp(int(timestamp), tz=timezone.utc)
@@ -86,20 +77,8 @@ def _to_price_candle(rate: Any, *, daily: bool = False) -> OraclePriceCandleIn:
     )
 
 
-def _ensure_symbol_ready(mt5: Any, symbol: str) -> None:
-    symbol_info = mt5.symbol_info(symbol)
-    if symbol_info is None:
-        raise RuntimeError(
-            f"MT5 symbol is unavailable: {symbol}. Verify the broker offers this symbol name and check for any suffix in Market Watch."
-        )
-    if not symbol_info.visible and not mt5.symbol_select(symbol, True):
-        raise RuntimeError(
-            f"MT5 symbol is unavailable in Market Watch: {symbol}. The runner could not select it for live use."
-        )
-
-
 def _initialize_mt5(settings: Settings) -> Any:
-    mt5 = _get_mt5_module()
+    mt5 = get_mt5_module()
     kwargs: dict[str, Any] = {}
     if settings.mt5_terminal_path:
         terminal_path = Path(settings.mt5_terminal_path).expanduser()
@@ -291,23 +270,23 @@ def build_live_oracle_payload(
     """
 
     instrument = normalize_symbol(symbol or settings.normalized_default_symbol)
-    _ensure_symbol_ready(mt5, instrument)
+    broker_symbol = resolve_broker_symbol(mt5, instrument)
 
     now_utc = datetime.now(timezone.utc)
     trading_day_utc = datetime(now_utc.year, now_utc.month, now_utc.day, tzinfo=timezone.utc)
 
-    m1_rates = _copy_m1_rates_for_day(mt5, instrument, trading_day_utc)
+    m1_rates = _copy_m1_rates_for_day(mt5, broker_symbol, trading_day_utc)
     _ensure_m1_history_ready(m1_rates, instrument)
     _ensure_london_anchor_candle_ready(m1_rates, trading_day_utc, instrument, now_utc)
 
-    m15_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_M15, M15_LOOKBACK_BARS)
+    m15_rates = _copy_rates_from_pos(mt5, broker_symbol, mt5.TIMEFRAME_M15, M15_LOOKBACK_BARS)
     _ensure_m15_history_ready(m15_rates, instrument)
-    h1_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_H1, H1_LOOKBACK_BARS)
-    h4_rates = _copy_rates_from_pos(mt5, instrument, mt5.TIMEFRAME_H4, H4_LOOKBACK_BARS)
+    h1_rates = _copy_rates_from_pos(mt5, broker_symbol, mt5.TIMEFRAME_H1, H1_LOOKBACK_BARS)
+    h4_rates = _copy_rates_from_pos(mt5, broker_symbol, mt5.TIMEFRAME_H4, H4_LOOKBACK_BARS)
 
-    daily_rates = _copy_daily_rates(mt5, instrument, settings.adr_lookback_days + 2)
+    daily_rates = _copy_daily_rates(mt5, broker_symbol, settings.adr_lookback_days + 2)
 
-    current_price = _resolve_current_price(mt5, instrument, float(m15_rates[-1]["close"]))
+    current_price = _resolve_current_price(mt5, broker_symbol, float(m15_rates[-1]["close"]))
     prev_m15_close = round(float(m15_rates[-2]["close"]), 5)
     atr_m1 = _compute_atr_m1(m1_rates)
 
@@ -333,6 +312,7 @@ def build_live_oracle_payload(
 
     snapshot = RunnerSnapshot(
         symbol=instrument,
+        broker_symbol=broker_symbol,
         current_price=current_price,
         prev_m15_close=prev_m15_close,
         atr_m1=atr_m1,
@@ -449,8 +429,9 @@ def run_live_mt5_runner() -> None:
                     try:
                         payload, snapshot = build_live_oracle_payload(mt5, settings, symbol=symbol)
                         logger.info(
-                            "Payload generated | symbol=%s current_price=%.5f prev_m15_close=%.5f atr_m1=%.5f m1=%s m15=%s h1=%s h4=%s d1_levels=%s d1_adr=%s",
+                            "Payload generated | symbol=%s broker_symbol=%s current_price=%.5f prev_m15_close=%.5f atr_m1=%.5f m1=%s m15=%s h1=%s h4=%s d1_levels=%s d1_adr=%s",
                             snapshot.symbol,
+                            snapshot.broker_symbol,
                             snapshot.current_price,
                             snapshot.prev_m15_close,
                             snapshot.atr_m1,

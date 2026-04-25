@@ -45,8 +45,10 @@ from app.services.performance_service import (
 )
 from app.services.liquidity_engine import Candle as LiquidityCandle
 from app.services.market_state_service import upsert_market_state
+from app.services.news_context import compute_news_context
 from app.services.signal_service import save_evaluated_signal
 from app.services.telegram_service import deliver_signal_alert, deliver_signal_outcome_alerts
+from app.services.v2_intelligence import build_v2_intelligence_snapshot
 
 router = APIRouter()
 
@@ -187,6 +189,11 @@ def _persist_market_state(
         if payload.h4_candles
         else None
     )
+    news_context = compute_news_context(symbol)
+    v2_snapshot = build_v2_intelligence_snapshot(
+        payload.model_copy(update={"symbol": symbol}),
+        news_context=news_context,
+    )
 
     upsert_market_state(
         db,
@@ -213,6 +220,7 @@ def _persist_market_state(
         bias=artifacts.response.bias,
         h1_candles=h1_candles,
         h4_candles=h4_candles,
+        v2_snapshot=v2_snapshot.model_dump(mode="json"),
     )
 
 

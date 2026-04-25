@@ -17,49 +17,48 @@ def signals_dashboard() -> HTMLResponse:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ObserverAI Signals Dashboard</title>
+  <title>ObserverAI Dashboard v2</title>
   <style>
     :root {
-      --bg: #f4f1eb;
+      --bg: #f5f3ef;
       --panel: #ffffff;
-      --panel-soft: #fbf8f3;
-      --ink: #14181d;
-      --muted: #69717c;
-      --line: #d8d1c5;
-      --accent: #8d7447;
-      --buy: #1e6a46;
-      --sell: #9a4033;
-      --wait: #7f6c3c;
-      --shadow: 0 18px 40px rgba(20, 24, 29, 0.06);
-      --shadow-soft: 0 10px 24px rgba(20, 24, 29, 0.04);
+      --panel-soft: #faf8f4;
+      --ink: #15191f;
+      --muted: #69707c;
+      --line: #d8d2c6;
+      --accent: #8c7550;
+      --buy: #225c42;
+      --sell: #8b4136;
+      --wait: #7c6b44;
+      --shadow: 0 18px 44px rgba(21, 25, 31, 0.06);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      min-height: 100vh;
       background: var(--bg);
       color: var(--ink);
       font-family: Inter, "Segoe UI", Arial, sans-serif;
     }
 
     .shell {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1200px, calc(100% - 28px));
       margin: 0 auto;
       padding: 28px 0 56px;
+      display: grid;
+      gap: 18px;
     }
 
     .masthead {
       display: grid;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 10px;
     }
 
     .eyebrow {
       color: var(--accent);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
@@ -72,12 +71,12 @@ def signals_dashboard() -> HTMLResponse:
     }
 
     h1 {
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.08;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.1;
     }
 
     h2 {
-      font-size: 25px;
+      font-size: 24px;
       line-height: 1.2;
     }
 
@@ -88,68 +87,67 @@ def signals_dashboard() -> HTMLResponse:
 
     .subhead {
       margin: 0;
-      max-width: 860px;
+      max-width: 900px;
       color: var(--muted);
       font-size: 15px;
       line-height: 1.7;
     }
 
-    .topbar {
+    .toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 20px;
       padding: 14px 16px;
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: var(--shadow-soft);
+      background: rgba(255,255,255,0.86);
+      box-shadow: var(--shadow);
     }
 
-    .topbar-group {
+    .toolbar-group {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
     }
 
+    select,
     button {
       min-height: 40px;
-      padding: 0 16px;
-      border: 0;
+      padding: 0 14px;
       border-radius: 999px;
-      background: var(--ink);
-      color: #f8f6f1;
       font: inherit;
       font-size: 14px;
-      font-weight: 600;
+    }
+
+    select {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--ink);
+    }
+
+    button {
+      border: 0;
+      background: var(--ink);
+      color: #f8f7f3;
+      font-weight: 700;
       cursor: pointer;
-      transition: opacity 140ms ease, transform 140ms ease;
     }
 
-    button:hover {
-      opacity: 0.94;
-      transform: translateY(-1px);
-    }
-
-    .status {
-      color: var(--muted);
+    .status,
+    .timer {
       font-size: 13px;
+      color: var(--muted);
     }
 
     .timer {
       color: var(--accent);
-      font-size: 13px;
       font-weight: 700;
     }
 
-    .stack {
-      display: grid;
-      gap: 20px;
-    }
-
+    .stack,
     .section {
       display: grid;
       gap: 16px;
@@ -158,9 +156,9 @@ def signals_dashboard() -> HTMLResponse:
     .section-head {
       display: flex;
       flex-wrap: wrap;
-      align-items: baseline;
       justify-content: space-between;
-      gap: 12px;
+      align-items: baseline;
+      gap: 10px;
     }
 
     .section-head span {
@@ -177,45 +175,73 @@ def signals_dashboard() -> HTMLResponse:
     }
 
     .card-body {
-      padding: 22px;
+      padding: 20px;
+      display: grid;
+      gap: 14px;
     }
 
     .accent-card {
       background: linear-gradient(180deg, rgba(250, 248, 244, 0.96), rgba(255, 255, 255, 1));
     }
 
-    .headline {
+    .grid-4,
+    .grid-3,
+    .grid-2 {
       display: grid;
-      gap: 10px;
+      gap: 14px;
     }
 
-    .headline p {
-      margin: 0;
+    .grid-4 {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .metric,
+    .tile,
+    .stock-row {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      display: grid;
+      gap: 8px;
+    }
+
+    .metric-label,
+    .tile-label {
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.65;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .badge-row,
-    .tile-top,
-    .liquidity-top {
+    .metric-value,
+    .tile-value {
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .pill-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
+      gap: 8px;
     }
 
     .pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      padding: 8px 11px;
       border-radius: 999px;
-      padding: 8px 12px;
       border: 1px solid var(--line);
       background: var(--panel-soft);
-      color: var(--ink);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -223,80 +249,13 @@ def signals_dashboard() -> HTMLResponse:
     .buy { color: var(--buy); }
     .sell { color: var(--sell); }
     .wait { color: var(--wait); }
-    .tradeable-yes { color: var(--buy); }
-    .tradeable-no { color: var(--wait); }
-
-    .grid-3,
-    .grid-2,
-    .mini-grid,
-    .liquidity-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .grid-3 {
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    }
-
-    .grid-2 {
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    }
-
-    .mini-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .metric,
-    .mini-row,
-    .liquidity-item {
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.9);
-    }
-
-    .metric-label,
-    .mini-row span:first-child,
-    .liquidity-kicker {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .metric-value,
-    .mini-row span:last-child,
-    .liquidity-main {
-      display: block;
-      font-size: 18px;
-      line-height: 1.35;
-    }
-
-    .tile,
-    .liquidity-card {
-      display: grid;
-      gap: 14px;
-    }
-
-    .tile-reason,
-    .liquidity-reason {
+    .reason,
+    .muted {
       color: var(--muted);
       font-size: 14px;
       line-height: 1.6;
       white-space: normal;
       overflow-wrap: anywhere;
-    }
-
-    .liquidity-meta {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      color: var(--muted);
-      font-size: 13px;
     }
 
     .empty {
@@ -314,16 +273,11 @@ def signals_dashboard() -> HTMLResponse:
 
     @media (max-width: 760px) {
       .shell {
-        width: min(100%, calc(100% - 24px));
+        width: min(100%, calc(100% - 20px));
       }
 
       .card-body {
         padding: 18px;
-      }
-
-      .mini-grid,
-      .liquidity-meta {
-        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -331,18 +285,20 @@ def signals_dashboard() -> HTMLResponse:
 <body>
   <main class="shell">
     <section class="masthead">
-      <span class="eyebrow">ObserverAI Magnet Engine</span>
-      <h1>Signals Dashboard</h1>
+      <span class="eyebrow">ObserverAI Magnet Engine v2</span>
+      <h1>Institutional Bias, Liquidity, News, and Opportunity Context</h1>
       <p class="subhead">
-        Scalping EA context stays strict and fast around M1 and M15 execution, while the dashboard also surfaces H1 and H4 liquidity magnets for swing-aware monitoring across supported symbols.
+        The scalping engine stays strict around M1 and M15 execution, while the dashboard expands into 08:01 bias, higher-timeframe liquidity, volatility, manipulation context, and weekly opportunity scanning.
       </p>
     </section>
 
-    <section class="topbar">
-      <div class="topbar-group">
+    <section class="toolbar">
+      <div class="toolbar-group">
+        <label class="status" for="symbol-select">Symbol</label>
+        <select id="symbol-select"></select>
         <button id="refresh-btn" type="button">Refresh</button>
       </div>
-      <div class="topbar-group">
+      <div class="toolbar-group">
         <span id="m15-timer" class="timer">Next M15 close in: 15:00</span>
         <span id="status" class="status">Waiting for data...</span>
       </div>
@@ -350,48 +306,60 @@ def signals_dashboard() -> HTMLResponse:
 
     <section class="stack">
       <article class="card accent-card">
-        <div id="best-signal" class="card-body empty">
-          <strong>Best Signal Now</strong>
-          No strong signal available
+        <div id="best-direction" class="card-body empty">
+          <strong>Best Direction Now</strong>
+          No strong directional alignment yet.
         </div>
       </article>
 
       <section class="section">
         <div class="section-head">
-          <h2>Scalping Signals</h2>
-          <span>M1/M15 execution view</span>
+          <h2>Multi-Symbol Overview</h2>
+          <span>XAUUSD | GBPJPY | BTCUSD</span>
         </div>
-        <div id="symbol-grid" class="grid-3">
+        <div id="symbol-tiles" class="grid-3">
+          <article class="card"><div class="card-body empty"><strong>Loading symbols...</strong>ObserverAI is preparing the latest v2 summaries.</div></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Selected Symbol</h2>
+          <span id="selected-symbol-label">XAUUSD</span>
+        </div>
+        <div class="grid-2">
           <article class="card">
-            <div class="card-body empty">
-              <strong>Loading symbols...</strong>
-              ObserverAI is preparing the latest scalping signal tiles.
-            </div>
+            <div id="anchor-card" class="card-body empty"><strong>08:01 Anchor</strong>No anchor data yet.</div>
+          </article>
+          <article class="card">
+            <div id="zone-card" class="card-body empty"><strong>Zone-to-Zone Liquidity</strong>No liquidity path yet.</div>
+          </article>
+          <article class="card">
+            <div id="midlevel-card" class="card-body empty"><strong>M15 Midlevel Break</strong>No M15 midlevel break yet.</div>
+          </article>
+          <article class="card">
+            <div id="volatility-card" class="card-body empty"><strong>Volatility + Manipulation</strong>No volatility snapshot yet.</div>
+          </article>
+          <article class="card">
+            <div id="news-card" class="card-body empty"><strong>News Direction</strong>No news context loaded yet.</div>
+          </article>
+          <article class="card">
+            <div id="scalp-card" class="card-body empty"><strong>Scalp Status</strong>No signals yet for this symbol.</div>
           </article>
         </div>
       </section>
 
       <section class="section">
         <div class="section-head">
-          <h2>Swing Liquidity</h2>
-          <span>H1 Magnets | H4 Magnets | dashboard-only context</span>
+          <h2>Weekly Stock Opportunities</h2>
+          <span>Elite dashboard context</span>
         </div>
-
-        <article class="card accent-card">
-          <div id="strongest-liquidity" class="card-body empty">
-            <strong>Strongest Liquidity Magnet</strong>
-            No H1/H4 liquidity magnets yet.
+        <article class="card">
+          <div id="stocks-card" class="card-body empty">
+            <strong>Weekly Stock Opportunities</strong>
+            Stock data is loading.
           </div>
         </article>
-
-        <div id="liquidity-grid" class="grid-3">
-          <article class="card">
-            <div class="card-body empty">
-              <strong>Loading liquidity...</strong>
-              ObserverAI is preparing H1 and H4 magnets.
-            </div>
-          </article>
-        </div>
       </section>
     </section>
   </main>
@@ -399,21 +367,24 @@ def signals_dashboard() -> HTMLResponse:
   <script>
     const SUPPORTED_SYMBOLS = __SYMBOLS_JSON__;
     const REFRESH_INTERVAL_MS = 15000;
-    const MAX_TRADEABLE_AGE_MS = 24 * 60 * 60 * 1000;
-
     const LABEL_OVERRIDES = {
-      bullish_continuation: "Bullish Continuation",
-      bearish_continuation: "Bearish Continuation",
-      bullish_reversal: "Bullish Reversal",
-      bearish_reversal: "Bearish Reversal",
-      neutral_outside_value: "Neutral Outside Value",
-      neutral_wait: "Neutral Wait",
-      target_hit: "Target Hit",
-      invalidated: "Invalidated",
-      expired: "Expired",
-      open: "Open",
-      not_tracking: "Not Tracking",
-      none: "None",
+      bullish: "Bullish",
+      bearish: "Bearish",
+      neutral: "Neutral",
+      buy: "Buy",
+      sell: "Sell",
+      wait: "Wait",
+      wick_rejection: "Wick Rejection",
+      body_acceptance: "Body Acceptance",
+      buy_side_sweep: "Buy-Side Sweep",
+      sell_side_sweep: "Sell-Side Sweep",
+      range_trap: "Range Trap",
+      no_mid_flow: "No Mid Flow",
+      bullish_mid_to_mid: "Bullish Mid-to-Mid",
+      bearish_mid_to_mid: "Bearish Mid-to-Mid",
+      mid_compression: "Mid Compression",
+      break_up: "Break Up",
+      break_down: "Break Down",
       equal_highs: "Equal Highs",
       equal_lows: "Equal Lows",
       previous_day_high: "Previous Day High",
@@ -421,467 +392,368 @@ def signals_dashboard() -> HTMLResponse:
       weekly_high: "Weekly High",
       weekly_low: "Weekly Low",
       round_number: "Round Number",
-      imbalance: "Unfilled Imbalance"
+      imbalance: "Unfilled Imbalance",
+      setup_confirmed: "Setup Confirmed",
+      setup_forming: "Setup Forming"
     };
 
-    const refreshButton = document.getElementById("refresh-btn");
-    const statusNode = document.getElementById("status");
-    const timerNode = document.getElementById("m15-timer");
-    const bestSignalNode = document.getElementById("best-signal");
-    const symbolGridNode = document.getElementById("symbol-grid");
-    const strongestLiquidityNode = document.getElementById("strongest-liquidity");
-    const liquidityGridNode = document.getElementById("liquidity-grid");
-
-    let latestBySymbol = new Map();
-    let liquidityBySymbol = new Map();
+    const state = {
+      selectedSymbol: SUPPORTED_SYMBOLS[0] || "XAUUSD"
+    };
 
     function humanizeLabel(value) {
-      if (!value) {
+      if (value === null || value === undefined || value === "") {
         return "None";
       }
-
-      const normalized = String(value).trim();
-      const lowered = normalized.toLowerCase();
-      if (LABEL_OVERRIDES[lowered]) {
-        return LABEL_OVERRIDES[lowered];
+      const raw = String(value).trim();
+      const lower = raw.toLowerCase();
+      if (LABEL_OVERRIDES[lower]) {
+        return LABEL_OVERRIDES[lower];
       }
-
-      return normalized
-        .split(/[_\\s]+/)
-        .filter(Boolean)
-        .map((part) => {
-          const token = part.toLowerCase();
-          if (token === "adr") return "ADR";
-          if (token === "bos") return "BOS";
-          if (token === "mss") return "MSS";
-          if (token === "xauusd") return "XAUUSD";
-          if (token === "gbpjpy") return "GBPJPY";
-          if (token === "btcusd") return "BTCUSD";
-          return part.charAt(0).toUpperCase() + part.slice(1);
-        })
-        .join(" ");
+      return raw
+        .replace(/_/g, " ")
+        .replace(/\\b\\w/g, (match) => match.toUpperCase());
     }
 
-    function formatNumber(value, fallback = "None") {
-      if (value === null || value === undefined || Number.isNaN(Number(value))) {
-        return fallback;
+    function formatPrice(value) {
+      if (value === null || value === undefined) {
+        return "None";
       }
-      return Number(value).toFixed(2);
-    }
-
-    function formatTimestamp(value) {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) {
-        return "Unknown";
+      const number = Number(value);
+      if (!Number.isFinite(number)) {
+        return "None";
       }
-      return date.toLocaleString();
+      if (Math.abs(number) >= 1000) {
+        return number.toFixed(2);
+      }
+      return number.toFixed(5);
     }
 
     function formatAge(value) {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) {
+      if (!value) {
         return "Unknown";
       }
-
-      const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-      if (seconds < 60) return `${seconds}s ago`;
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes}m ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
-      const days = Math.floor(hours / 24);
-      return `${days}d ${hours % 24}h ago`;
+      const ms = Date.now() - new Date(value).getTime();
+      if (!Number.isFinite(ms) || ms < 0) {
+        return "Just now";
+      }
+      const totalSeconds = Math.floor(ms / 1000);
+      if (totalSeconds < 60) {
+        return `${totalSeconds}s ago`;
+      }
+      const totalMinutes = Math.floor(totalSeconds / 60);
+      if (totalMinutes < 60) {
+        return `${totalMinutes}m ago`;
+      }
+      const totalHours = Math.floor(totalMinutes / 60);
+      if (totalHours < 24) {
+        return `${totalHours}h ago`;
+      }
+      return `${Math.floor(totalHours / 24)}d ago`;
     }
 
-    function formatAction(action) {
-      if (action === "BUY") return "Buy Signal";
-      if (action === "SELL") return "Sell Signal";
-      return "Standby";
-    }
-
-    function actionClass(action) {
-      if (action === "BUY") return "buy";
-      if (action === "SELL") return "sell";
+    function actionClass(value) {
+      const lower = String(value || "").toLowerCase();
+      if (lower.includes("buy") || lower.includes("bullish")) return "buy";
+      if (lower.includes("sell") || lower.includes("bearish")) return "sell";
       return "wait";
     }
 
-    function formatLifecycle(signal) {
-      return signal && signal.lifecycle && signal.lifecycle.state
-        ? signal.lifecycle.state
-        : "Setup Forming";
-    }
-
-    function formatBias(signal) {
-      return humanizeLabel(signal && signal.resolved_bias);
-    }
-
-    function formatReason(signal) {
-      return signal && signal.intent && signal.intent.reason
-        ? String(signal.intent.reason)
-        : "No additional context available.";
-    }
-
-    function isTradeableSignal(signal) {
-      if (!signal || !signal.intent) return false;
-      if (!["BUY", "SELL"].includes(signal.intent.action)) return false;
-      if (Number(signal.confidence || 0) < 88) return false;
-      if (!signal.intent.target && signal.intent.target !== 0) return false;
-      if (formatLifecycle(signal) !== "Setup Confirmed") return false;
-      if (
-        !String(signal.resolved_bias || "").startsWith("bullish") &&
-        !String(signal.resolved_bias || "").startsWith("bearish")
-      ) {
-        return false;
-      }
-
-      const createdAt = new Date(signal.created_at);
-      if (Number.isNaN(createdAt.getTime())) return false;
-      return (Date.now() - createdAt.getTime()) <= MAX_TRADEABLE_AGE_MS;
-    }
-
-    function tradeableLabel(signal) {
-      return isTradeableSignal(signal) ? "Tradeable" : "Not Tradeable";
-    }
-
-    function renderBestSignal(payload) {
-      if (!payload || !payload.tradeable) {
-        bestSignalNode.className = "card-body empty";
-        bestSignalNode.innerHTML = `
-          <strong>Best Signal Now</strong>
-          ${payload && payload.message ? payload.message : "No strong signal available"}
-        `;
+    function renderBestDirection(summary) {
+      const root = document.getElementById("best-direction");
+      const item = summary && summary.best_direction_now;
+      if (!item || !item.symbol) {
+        root.className = "card-body empty";
+        root.innerHTML = "<strong>Best Direction Now</strong>No strong directional alignment yet.";
         return;
       }
 
-      bestSignalNode.className = "card-body";
-      bestSignalNode.innerHTML = `
-        <div class="headline">
-          <span class="eyebrow">Best Signal Now</span>
-          <div class="badge-row">
-            <span class="pill">${payload.symbol}</span>
-            <span class="pill ${actionClass(payload.action)}">${formatAction(payload.action)}</span>
-            <span class="pill tradeable-yes">Tradeable</span>
-            <span class="pill">${payload.bias}</span>
-          </div>
-          <p>${payload.reason || "Highest confidence active directional setup"}</p>
+      root.className = "card-body";
+      root.innerHTML = `
+        <div class="pill-row">
+          <span class="pill ${actionClass(item.direction)}">${humanizeLabel(item.direction)}</span>
+          <span class="pill">${item.symbol}</span>
+          <span class="pill">${item.confidence}% Confidence</span>
+          <span class="pill">${humanizeLabel(item.trade_policy)}</span>
         </div>
-        <div class="mini-grid">
-          <div class="mini-row">
-            <span>Confidence</span>
-            <span>${payload.confidence}%</span>
+        <div class="grid-4">
+          <div class="metric">
+            <span class="metric-label">Symbol</span>
+            <span class="metric-value">${item.symbol}</span>
           </div>
-          <div class="mini-row">
-            <span>Current Price</span>
-            <span>${formatNumber(payload.price)}</span>
+          <div class="metric">
+            <span class="metric-label">Highest Probability Direction</span>
+            <span class="metric-value ${actionClass(item.direction)}">${humanizeLabel(item.direction)}</span>
           </div>
-          <div class="mini-row">
-            <span>Target</span>
-            <span>${formatNumber(payload.target, "Not Set")}</span>
+          <div class="metric">
+            <span class="metric-label">08:01 Bias</span>
+            <span class="metric-value">${humanizeLabel(item.anchor_bias)}</span>
           </div>
-          <div class="mini-row">
-            <span>Mode</span>
-            <span>Scalping EA</span>
+          <div class="metric">
+            <span class="metric-label">Current Price</span>
+            <span class="metric-value">${formatPrice(item.current_price)}</span>
           </div>
         </div>
       `;
     }
 
-    function renderSignalTiles() {
-      symbolGridNode.innerHTML = SUPPORTED_SYMBOLS.map((symbol) => {
-        const signal = latestBySymbol.get(symbol);
-        if (!signal) {
-          return `
-            <article class="card">
-              <div class="card-body empty">
-                <strong>${symbol}</strong>
-                No signals yet for this symbol.
-              </div>
-            </article>
-          `;
-        }
+    function renderSymbolTiles(summary) {
+      const root = document.getElementById("symbol-tiles");
+      const items = summary && Array.isArray(summary.symbols) ? summary.symbols : [];
+      if (!items.length) {
+        root.innerHTML = '<article class="card"><div class="card-body empty"><strong>No signals yet</strong>No symbols are ready yet.</div></article>';
+        return;
+      }
 
-        const tradeable = isTradeableSignal(signal);
+      root.innerHTML = items.map((item) => {
+        const scalp = item.scalp_signal;
         return `
           <article class="card">
             <div class="card-body tile">
-              <div class="tile-top">
-                <span class="pill">${signal.symbol}</span>
-                <span class="pill ${actionClass(signal.intent.action)}">${formatAction(signal.intent.action)}</span>
-                <span class="pill ${tradeable ? "tradeable-yes" : "tradeable-no"}">${tradeableLabel(signal)}</span>
+              <div class="pill-row">
+                <span class="pill">${item.symbol}</span>
+                <span class="pill ${actionClass(item.highest_probability_direction.direction)}">${humanizeLabel(item.highest_probability_direction.direction)}</span>
+                <span class="pill">${humanizeLabel(item.volatility_state)}</span>
               </div>
-              <div class="headline">
-                <div class="section-head">
-                  <h3>${formatBias(signal)}</h3>
-                  <span>Lifecycle: ${formatLifecycle(signal)}</span>
+              <div class="grid-2">
+                <div class="metric">
+                  <span class="metric-label">08:01 Bias</span>
+                  <span class="metric-value">${humanizeLabel(item.anchor_bias)}</span>
                 </div>
-                <p>Last updated ${formatAge(signal.created_at)} | ${formatTimestamp(signal.created_at)}</p>
-              </div>
-              <div class="mini-grid">
-                <div class="mini-row">
-                  <span>Confidence</span>
-                  <span>${signal.confidence}%</span>
+                <div class="metric">
+                  <span class="metric-label">Strongest H1/H4 Magnet</span>
+                  <span class="metric-value">${item.strongest_magnet ? `${item.strongest_magnet.label} ${formatPrice(item.strongest_magnet.price)}` : "No magnet yet"}</span>
                 </div>
-                <div class="mini-row">
-                  <span>Price</span>
-                  <span>${formatNumber(signal.current_price)}</span>
+                <div class="metric">
+                  <span class="metric-label">Scalp Status</span>
+                  <span class="metric-value ${actionClass(scalp && scalp.action)}">${scalp ? `${humanizeLabel(scalp.action)} | ${humanizeLabel(scalp.lifecycle)}` : "No signals yet for this symbol."}</span>
                 </div>
-                <div class="mini-row">
-                  <span>Target</span>
-                  <span>${formatNumber(signal.intent && signal.intent.target, "Not Set")}</span>
-                </div>
-                <div class="mini-row">
-                  <span>Status</span>
-                  <span>${humanizeLabel(signal.lifecycle && signal.lifecycle.outcome_status)}</span>
+                <div class="metric">
+                  <span class="metric-label">Tradeable</span>
+                  <span class="metric-value">${scalp && scalp.tradeable ? "Tradeable" : "Not Tradeable"}</span>
                 </div>
               </div>
-              <div class="tile-reason">${formatReason(signal)}</div>
+              <p class="reason">${item.highest_probability_direction.reason}</p>
             </div>
           </article>
         `;
       }).join("");
     }
 
-    function flattenLiquidity() {
-      const all = [];
-      for (const symbol of SUPPORTED_SYMBOLS) {
-        const entry = liquidityBySymbol.get(symbol);
-        if (!entry) continue;
-        for (const timeframe of ["H1", "H4"]) {
-          const payload = entry[timeframe];
-          if (!payload || !Array.isArray(payload.strong_magnets)) continue;
-          for (const magnet of payload.strong_magnets) {
-            all.push({ symbol, timeframe, ...magnet });
-          }
-        }
-      }
-      return all;
+    function renderAnchor(intelligence) {
+      const anchor = intelligence.anchor_0801 || {};
+      const discount = intelligence.discount_premium || {};
+      const root = document.getElementById("anchor-card");
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>08:01 Anchor</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">Anchor High</span><span class="metric-value">${formatPrice(anchor.anchor_high)}</span></div>
+          <div class="metric"><span class="metric-label">Anchor Low</span><span class="metric-value">${formatPrice(anchor.anchor_low)}</span></div>
+          <div class="metric"><span class="metric-label">Anchor Midlevel</span><span class="metric-value">${formatPrice(anchor.anchor_mid)}</span></div>
+          <div class="metric"><span class="metric-label">Price Position</span><span class="metric-value">${humanizeLabel(discount.price_position)}</span></div>
+          <div class="metric"><span class="metric-label">Bias</span><span class="metric-value ${actionClass(anchor.bias)}">${humanizeLabel(anchor.bias)}</span></div>
+          <div class="metric"><span class="metric-label">Anchor Type</span><span class="metric-value">${humanizeLabel(anchor.anchor_type)}</span></div>
+        </div>
+        <p class="reason">${anchor.reason || "No anchor context available."}</p>
+      `;
     }
 
-    function renderStrongestLiquidity() {
-      const magnets = flattenLiquidity();
-      if (!magnets.length) {
-        strongestLiquidityNode.className = "card-body empty";
-        strongestLiquidityNode.innerHTML = `
-          <strong>Strongest Liquidity Magnet</strong>
-          No H1/H4 liquidity magnets yet.
-        `;
-        return;
-      }
-
-      magnets.sort((left, right) => {
-        if (right.strength !== left.strength) return right.strength - left.strength;
-        if (left.distance !== right.distance) return left.distance - right.distance;
-        return left.rank - right.rank;
-      });
-
-      const strongest = magnets[0];
-      strongestLiquidityNode.className = "card-body";
-      strongestLiquidityNode.innerHTML = `
-        <div class="headline">
-          <span class="eyebrow">Strongest Liquidity Magnet</span>
-          <div class="liquidity-top">
-            <span class="pill">${strongest.symbol}</span>
-            <span class="pill">${strongest.timeframe}</span>
-            <span class="pill">${humanizeLabel(strongest.type)}</span>
-            <span class="pill">${strongest.side === "above" ? "Above" : "Below"}</span>
-          </div>
-          <p>${strongest.reason}</p>
+    function renderZone(intelligence) {
+      const liquidity = intelligence.liquidity_magnets || {};
+      const zone = intelligence.zone_to_zone || {};
+      const root = document.getElementById("zone-card");
+      const path = Array.isArray(zone.path) ? zone.path : [];
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>Zone-to-Zone Liquidity</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">From Current Price</span><span class="metric-value">${formatPrice(zone.from_zone)}</span></div>
+          <div class="metric"><span class="metric-label">Next Zone</span><span class="metric-value">${zone.next_zone ? formatPrice(zone.next_zone) : "No valid zone"}</span></div>
+          <div class="metric"><span class="metric-label">Major Zone</span><span class="metric-value">${zone.major_zone ? formatPrice(zone.major_zone) : "No valid zone"}</span></div>
+          <div class="metric"><span class="metric-label">Direction</span><span class="metric-value">${humanizeLabel(zone.direction)}</span></div>
+          <div class="metric"><span class="metric-label">Strongest Liquidity Magnet</span><span class="metric-value">${liquidity.strongest_magnet ? `${liquidity.strongest_magnet.timeframe} ${liquidity.strongest_magnet.label} ${formatPrice(liquidity.strongest_magnet.price)}` : "No magnet yet"}</span></div>
+          <div class="metric"><span class="metric-label">HTF Bias</span><span class="metric-value">${humanizeLabel(liquidity.htf_magnet_bias)}</span></div>
         </div>
-        <div class="mini-grid">
-          <div class="mini-row">
-            <span>Price</span>
-            <span>${formatNumber(strongest.price)}</span>
-          </div>
-          <div class="mini-row">
-            <span>Distance</span>
-            <span>${formatNumber(strongest.distance)}</span>
-          </div>
-          <div class="mini-row">
-            <span>Strength</span>
-            <span>${strongest.strength}</span>
-          </div>
-          <div class="mini-row">
-            <span>Direction</span>
-            <span>${strongest.side === "above" ? "Above" : "Below"}</span>
-          </div>
+        <p class="reason">${path.length ? path.map((item) => `${item.label} ${formatPrice(item.price)}`).join(" -> ") : "No path available yet."}</p>
+      `;
+    }
+
+    function renderMidlevel(intelligence) {
+      const item = intelligence.m15_midlevel_break || {};
+      const root = document.getElementById("midlevel-card");
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>M15 Midlevel Break</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">Midlevel</span><span class="metric-value">${formatPrice(item.midlevel)}</span></div>
+          <div class="metric"><span class="metric-label">Break Status</span><span class="metric-value">${item.confirmed ? "Confirmed" : "Unconfirmed"}</span></div>
+          <div class="metric"><span class="metric-label">Confirmed Direction</span><span class="metric-value ${actionClass(item.direction)}">${humanizeLabel(item.direction)}</span></div>
+          <div class="metric"><span class="metric-label">Next Level</span><span class="metric-value">${item.next_level ? formatPrice(item.next_level) : "No valid next level"}</span></div>
+        </div>
+        <p class="reason">${item.reason || "No confirmed M15 midlevel break."}</p>
+      `;
+    }
+
+    function renderVolatility(intelligence) {
+      const volatility = intelligence.volatility || {};
+      const manipulation = intelligence.manipulation_zone || {};
+      const root = document.getElementById("volatility-card");
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>Volatility + Manipulation</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">ATR</span><span class="metric-value">${formatPrice(volatility.atr)}</span></div>
+          <div class="metric"><span class="metric-label">ADR Used %</span><span class="metric-value">${Number(volatility.adr_used_pct || 0).toFixed(2)}%</span></div>
+          <div class="metric"><span class="metric-label">Volatility State</span><span class="metric-value">${humanizeLabel(volatility.state)}</span></div>
+          <div class="metric"><span class="metric-label">Manipulation Zone</span><span class="metric-value">${manipulation.active ? humanizeLabel(manipulation.type) : "Inactive"}</span></div>
+          <div class="metric"><span class="metric-label">Zone High</span><span class="metric-value">${formatPrice(manipulation.zone_high)}</span></div>
+          <div class="metric"><span class="metric-label">Zone Low</span><span class="metric-value">${formatPrice(manipulation.zone_low)}</span></div>
         </div>
       `;
     }
 
-    function renderMagnetList(payload, timeframe) {
-      if (!payload || !Array.isArray(payload.strong_magnets) || !payload.strong_magnets.length) {
-        return `
-          <div class="empty">
-            <strong>${timeframe} Magnets</strong>
-            No ${timeframe} liquidity magnets yet for this symbol.
-          </div>
-        `;
+    function renderNews(intelligence) {
+      const news = intelligence.news_context || {};
+      const root = document.getElementById("news-card");
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>News Direction</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">Event</span><span class="metric-value">${news.event || "No high-impact event tracked"}</span></div>
+          <div class="metric"><span class="metric-label">Currency</span><span class="metric-value">${news.currency || "None"}</span></div>
+          <div class="metric"><span class="metric-label">Time</span><span class="metric-value">${news.time ? new Date(news.time).toLocaleString() : "Not scheduled"}</span></div>
+          <div class="metric"><span class="metric-label">Impact</span><span class="metric-value">${humanizeLabel(news.impact)}</span></div>
+          <div class="metric"><span class="metric-label">Expected Direction</span><span class="metric-value">${humanizeLabel(news.expected_direction)}</span></div>
+          <div class="metric"><span class="metric-label">Trade Policy</span><span class="metric-value">${humanizeLabel(news.trade_policy)}</span></div>
+        </div>
+      `;
+    }
+
+    function renderScalp(summary, intelligence) {
+      const root = document.getElementById("scalp-card");
+      const item = summary.symbols.find((entry) => entry.symbol === state.selectedSymbol);
+      const scalp = item && item.scalp_signal;
+      const best = intelligence.highest_probability_direction || {};
+
+      if (!scalp) {
+        root.className = "card-body empty";
+        root.innerHTML = "<strong>Scalp Status</strong>No signals yet for this symbol.";
+        return;
       }
 
-      return `
-        <div class="liquidity-list">
-          ${payload.strong_magnets.slice(0, 3).map((magnet) => `
-            <article class="liquidity-item">
-              <span class="liquidity-kicker">${timeframe} Magnets</span>
-              <span class="liquidity-main">${magnet.rank}. ${magnet.label} ${formatNumber(magnet.price)}</span>
-              <div class="liquidity-meta">
-                <span>Direction: ${magnet.side === "above" ? "Above" : "Below"}</span>
-                <span>Distance: ${formatNumber(magnet.distance)}</span>
-                <span>Strength: ${magnet.strength}</span>
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>Scalp Status</h3>
+        <div class="grid-2">
+          <div class="metric"><span class="metric-label">Action</span><span class="metric-value ${actionClass(scalp.action)}">${humanizeLabel(scalp.action)}</span></div>
+          <div class="metric"><span class="metric-label">Lifecycle</span><span class="metric-value">${humanizeLabel(scalp.lifecycle)}</span></div>
+          <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${scalp.confidence || 0}%</span></div>
+          <div class="metric"><span class="metric-label">Target Price</span><span class="metric-value">${scalp.target ? formatPrice(scalp.target) : "None"}</span></div>
+          <div class="metric"><span class="metric-label">Tradeable</span><span class="metric-value">${scalp.tradeable ? "Tradeable" : "Not Tradeable"}</span></div>
+          <div class="metric"><span class="metric-label">Time Since Signal</span><span class="metric-value">${formatAge(scalp.created_at)}</span></div>
+        </div>
+        <p class="reason">${best.reason || "No scalp rationale available."}</p>
+      `;
+    }
+
+    function renderStocks(payload) {
+      const root = document.getElementById("stocks-card");
+      if (!payload || payload.available === false || !Array.isArray(payload.opportunities) || !payload.opportunities.length) {
+        root.className = "card-body empty";
+        root.innerHTML = `<strong>Weekly Stock Opportunities</strong>${payload && payload.message ? payload.message : "No stock opportunities available yet."}`;
+        return;
+      }
+
+      root.className = "card-body";
+      root.innerHTML = `
+        <h3>Weekly Stock Opportunities</h3>
+        <div class="grid-3">
+          ${payload.opportunities.slice(0, 6).map((item) => `
+            <div class="stock-row">
+              <div class="pill-row">
+                <span class="pill">${item.symbol}</span>
+                <span class="pill ${actionClass(item.bias)}">${humanizeLabel(item.bias)}</span>
+                <span class="pill">${item.confidence}%</span>
               </div>
-              <div class="liquidity-reason">${magnet.reason}</div>
-            </article>
+              <div class="muted">${humanizeLabel(item.setup_type)}</div>
+              <div class="tile-value">${item.target_zone}</div>
+              <div class="reason">${item.reason}</div>
+              <div class="muted">${item.risk_note}</div>
+            </div>
           `).join("")}
         </div>
       `;
     }
 
-    function renderLiquidityTiles() {
-      liquidityGridNode.innerHTML = SUPPORTED_SYMBOLS.map((symbol) => {
-        const entry = liquidityBySymbol.get(symbol);
-        const h1 = entry ? entry.H1 : null;
-        const h4 = entry ? entry.H4 : null;
-        const hasAny = Boolean(
-          (h1 && h1.strong_magnets && h1.strong_magnets.length) ||
-          (h4 && h4.strong_magnets && h4.strong_magnets.length)
-        );
+    function renderIntelligence(summary, intelligence) {
+      document.getElementById("selected-symbol-label").textContent = state.selectedSymbol;
+      renderAnchor(intelligence);
+      renderZone(intelligence);
+      renderMidlevel(intelligence);
+      renderVolatility(intelligence);
+      renderNews(intelligence);
+      renderScalp(summary, intelligence);
+    }
 
-        if (!hasAny) {
-          return `
-            <article class="card">
-              <div class="card-body empty">
-                <strong>${symbol}</strong>
-                No H1/H4 liquidity magnets yet for this symbol.
-              </div>
-            </article>
-          `;
-        }
+    async function loadDashboard() {
+      const status = document.getElementById("status");
+      status.textContent = "Refreshing...";
 
-        return `
-          <article class="card">
-            <div class="card-body liquidity-card">
-              <div class="section-head">
-                <h3>${symbol}</h3>
-                <span>HTF Bias: ${entry && entry.htf_magnet_bias ? humanizeLabel(entry.htf_magnet_bias) : "Neutral"}</span>
-              </div>
-              <div class="grid-2">
-                <div>${renderMagnetList(h1, "H1")}</div>
-                <div>${renderMagnetList(h4, "H4")}</div>
-              </div>
-            </div>
-          </article>
-        `;
-      }).join("");
+      try {
+        const [summaryRes, intelligenceRes, stocksRes] = await Promise.all([
+          fetch("/v2/dashboard-summary"),
+          fetch(`/v2/intelligence?symbol=${encodeURIComponent(state.selectedSymbol)}`),
+          fetch("/stocks/weekly-opportunities")
+        ]);
+
+        const summary = await summaryRes.json();
+        const intelligence = await intelligenceRes.json();
+        const stocks = await stocksRes.json();
+
+        renderBestDirection(summary);
+        renderSymbolTiles(summary);
+        renderIntelligence(summary, intelligence);
+        renderStocks(stocks);
+        status.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (error) {
+        console.error(error);
+        status.textContent = "Refresh failed. Retrying soon.";
+      }
     }
 
     function updateM15Timer() {
       const now = new Date();
-      const elapsed = (now.getMinutes() % 15) * 60 + now.getSeconds();
-      const remaining = elapsed === 0 ? 15 * 60 : (15 * 60) - elapsed;
-      const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
-      const seconds = String(remaining % 60).padStart(2, "0");
-      timerNode.textContent = `Next M15 close in: ${minutes}:${seconds}`;
+      const next = new Date(now);
+      next.setSeconds(0, 0);
+      const minutes = now.getMinutes();
+      next.setMinutes(minutes - (minutes % 15) + 15);
+      const diff = Math.max(0, next.getTime() - now.getTime());
+      const totalSeconds = Math.floor(diff / 1000);
+      const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const ss = String(totalSeconds % 60).padStart(2, "0");
+      document.getElementById("m15-timer").textContent = `Next M15 close in: ${mm}:${ss}`;
     }
 
-    function refreshAges() {
-      if (latestBySymbol.size) {
-        renderSignalTiles();
-      }
+    function initialise() {
+      const select = document.getElementById("symbol-select");
+      select.innerHTML = SUPPORTED_SYMBOLS.map((symbol) => `<option value="${symbol}">${symbol}</option>`).join("");
+      select.value = state.selectedSymbol;
+      select.addEventListener("change", () => {
+        state.selectedSymbol = select.value;
+        loadDashboard();
+      });
+
+      document.getElementById("refresh-btn").addEventListener("click", loadDashboard);
+      updateM15Timer();
+      loadDashboard();
+      setInterval(loadDashboard, REFRESH_INTERVAL_MS);
+      setInterval(updateM15Timer, 1000);
     }
 
-    async function loadDashboard() {
-      statusNode.textContent = "Loading multi-symbol signals and liquidity...";
-
-      try {
-        const requests = [
-          fetch("/signals/best"),
-          ...SUPPORTED_SYMBOLS.map((symbol) => fetch(`/signals/latest?symbol=${encodeURIComponent(symbol)}&limit=1`)),
-          ...SUPPORTED_SYMBOLS.flatMap((symbol) => [
-            fetch(`/liquidity/magnets?symbol=${encodeURIComponent(symbol)}&timeframe=H1`),
-            fetch(`/liquidity/magnets?symbol=${encodeURIComponent(symbol)}&timeframe=H4`)
-          ])
-        ];
-
-        const responses = await Promise.all(requests);
-        const bestResponse = responses[0];
-        const latestResponses = responses.slice(1, 1 + SUPPORTED_SYMBOLS.length);
-        const liquidityResponses = responses.slice(1 + SUPPORTED_SYMBOLS.length);
-
-        if (!bestResponse.ok) {
-          throw new Error(`Best signal request failed with HTTP ${bestResponse.status}.`);
-        }
-
-        renderBestSignal(await bestResponse.json());
-
-        latestBySymbol = new Map();
-        for (let index = 0; index < latestResponses.length; index += 1) {
-          const response = latestResponses[index];
-          const symbol = SUPPORTED_SYMBOLS[index];
-          if (!response.ok) continue;
-          const payload = await response.json();
-          const item = Array.isArray(payload.items) && payload.items.length ? payload.items[0] : null;
-          if (item) {
-            latestBySymbol.set(symbol, item);
-          }
-        }
-        renderSignalTiles();
-
-        liquidityBySymbol = new Map();
-        for (let index = 0; index < liquidityResponses.length; index += 2) {
-          const symbol = SUPPORTED_SYMBOLS[index / 2];
-          const h1Response = liquidityResponses[index];
-          const h4Response = liquidityResponses[index + 1];
-          const symbolEntry = { H1: null, H4: null, htf_magnet_bias: "neutral" };
-
-          if (h1Response && h1Response.ok) {
-            symbolEntry.H1 = await h1Response.json();
-          }
-          if (h4Response && h4Response.ok) {
-            symbolEntry.H4 = await h4Response.json();
-          }
-
-          const biases = [symbolEntry.H1 && symbolEntry.H1.htf_magnet_bias, symbolEntry.H4 && symbolEntry.H4.htf_magnet_bias].filter(Boolean);
-          if (biases.includes("bullish") && !biases.includes("bearish")) {
-            symbolEntry.htf_magnet_bias = "bullish";
-          } else if (biases.includes("bearish") && !biases.includes("bullish")) {
-            symbolEntry.htf_magnet_bias = "bearish";
-          }
-
-          liquidityBySymbol.set(symbol, symbolEntry);
-        }
-
-        renderStrongestLiquidity();
-        renderLiquidityTiles();
-        statusNode.textContent = `Loaded ${SUPPORTED_SYMBOLS.length} symbols | Auto-refresh every 15s`;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error.";
-        bestSignalNode.className = "card-body empty";
-        bestSignalNode.innerHTML = `
-          <strong>Best Signal Now</strong>
-          ${message}
-        `;
-        strongestLiquidityNode.className = "card-body empty";
-        strongestLiquidityNode.innerHTML = `
-          <strong>Strongest Liquidity Magnet</strong>
-          Liquidity view is temporarily unavailable.
-        `;
-        latestBySymbol = new Map();
-        liquidityBySymbol = new Map();
-        renderSignalTiles();
-        renderLiquidityTiles();
-        statusNode.textContent = "Dashboard refresh failed";
-      }
-    }
-
-    refreshButton.addEventListener("click", loadDashboard);
-
-    updateM15Timer();
-    loadDashboard();
-    window.setInterval(loadDashboard, REFRESH_INTERVAL_MS);
-    window.setInterval(updateM15Timer, 1000);
-    window.setInterval(refreshAges, 1000);
+    initialise();
   </script>
 </body>
 </html>
-"""
-    return HTMLResponse(html.replace("__SYMBOLS_JSON__", symbols_json))
+""".replace("__SYMBOLS_JSON__", symbols_json)
+    return HTMLResponse(html)

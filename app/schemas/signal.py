@@ -11,6 +11,7 @@ from app.schemas.oracle import (
     StructureOut,
     SweepOut,
 )
+from app.schemas.v2 import HtfContextOut
 
 
 class SignalLifecycleOut(BaseModel):
@@ -73,6 +74,7 @@ class EaLatestSignalResponse(BaseModel):
     major_magnet: Optional[str] = None
     tradeable: bool
     lifecycle: Optional[str] = None
+    htf_context: HtfContextOut | None = None
     created_at: datetime | None = None
     message: Optional[str] = None
 

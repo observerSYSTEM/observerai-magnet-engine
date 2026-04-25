@@ -33,3 +33,4 @@ class MarketState(Base):
     h4_liquidity: Mapped[str | None] = mapped_column(Text, nullable=True)
     strongest_liquidity: Mapped[str | None] = mapped_column(Text, nullable=True)
     htf_magnet_bias: Mapped[str] = mapped_column(String(20), default='neutral')
+    v2_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)

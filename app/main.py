@@ -9,6 +9,7 @@ from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.billing import router as billing_router
 from app.api.landing import build_landing_page_html
+from app.api.stocks import router as stocks_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.init_db import init_db
@@ -20,6 +21,7 @@ from app.api.oracle import router as oracle_router
 from app.api.performance import router as performance_router
 from app.api.signals import router as signals_router
 from app.api.market_map import router as market_map_router
+from app.api.v2 import router as v2_router
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -100,3 +102,5 @@ app.include_router(liquidity_router)
 app.include_router(performance_router)
 app.include_router(market_map_router)
 app.include_router(dashboard_router)
+app.include_router(v2_router)
+app.include_router(stocks_router)

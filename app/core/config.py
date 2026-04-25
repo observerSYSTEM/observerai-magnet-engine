@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     ea_api_key: str = Field(default='', alias='EA_API_KEY')
     london_utc_offset: int = Field(default=0, alias='LONDON_UTC_OFFSET')
     adr_lookback_days: int = Field(default=5, alias='ADR_LOOKBACK_DAYS')
+    news_api_provider: str = Field(default='manual', alias='NEWS_API_PROVIDER')
+    finnhub_api_key: str = Field(default='', alias='FINNHUB_API_KEY')
+    alphavantage_api_key: str = Field(default='', alias='ALPHAVANTAGE_API_KEY')
+    stock_data_provider: str = Field(default='manual', alias='STOCK_DATA_PROVIDER')
+    polygon_api_key: str = Field(default='', alias='POLYGON_API_KEY')
 
     @property
     def cors_allowed_origins(self) -> list[str]:

@@ -17,6 +17,11 @@ def test_signals_dashboard_contains_v2_sections():
     assert "News Direction" in body
     assert "Weekly Stock Opportunities" in body
     assert "Multi-Symbol Overview" in body
+    assert "Liquidity Target" in body
+    assert "EA TP" in body
+    assert "Nearest Magnet" in body
+    assert "Major Magnet" in body
+    assert "HTF Magnet" in body
     assert "SUPPORTED_SYMBOLS" in body
     assert "XAUUSD" in body
     assert "BTCUSD" in body

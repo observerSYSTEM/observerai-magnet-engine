@@ -124,6 +124,12 @@ def test_oracle_get_demo_includes_intent_contract():
     assert payload["intent"]["action"] == "BUY"
     assert payload["intent"]["entry_type"] == "continuation"
     assert payload["intent"]["target"] == 3361.4
+    assert payload["liquidity_target"] == 3361.4
+    assert payload["dashboard_target"] == 3361.4
+    assert payload["telegram_target"] == 3361.4
+    assert payload["ea_tp"] == 3359.9
+    assert payload["ea_sl"] == 3348.2
+    assert payload["target_type"] == "atr"
 
 
 def test_oracle_post_evaluate_returns_expected_shape():
@@ -149,8 +155,17 @@ def test_oracle_post_evaluate_returns_expected_shape():
     assert payload["intent"]["action"] == "BUY"
     assert payload["intent"]["entry_type"] == "continuation"
     assert payload["intent"]["target"] == 3361.4
+    assert payload["liquidity_target"] == 3361.4
+    assert payload["dashboard_target"] == 3361.4
+    assert payload["telegram_target"] == 3361.4
+    assert payload["ea_tp"] == 3359.9
+    assert payload["ea_sl"] == 3348.2
+    assert payload["target_type"] == "atr"
+    assert payload["ea_tp"] != payload["dashboard_target"]
     assert "mid_flow=no_mid_flow" in payload["message"]
     assert "action=BUY" in payload["message"]
+    assert "liquidity_target=3361.40000" in payload["message"]
+    assert "ea_tp=3359.90000" in payload["message"]
 
 
 def test_oracle_post_stores_signal_and_latest_returns_it():
@@ -169,6 +184,12 @@ def test_oracle_post_stores_signal_and_latest_returns_it():
     assert latest["items"][0]["event_type"] == stored["event_type"]
     assert latest["items"][0]["nearest_magnet"] == stored["nearest_magnet"]
     assert latest["items"][0]["major_magnet"] == stored["major_magnet"]
+    assert latest["items"][0]["liquidity_target"] == stored["liquidity_target"]
+    assert latest["items"][0]["dashboard_target"] == stored["dashboard_target"]
+    assert latest["items"][0]["telegram_target"] == stored["telegram_target"]
+    assert latest["items"][0]["ea_tp"] == stored["ea_tp"]
+    assert latest["items"][0]["ea_sl"] == stored["ea_sl"]
+    assert latest["items"][0]["target_type"] == stored["target_type"]
     assert latest["items"][0]["magnet_path"] == stored["magnet_path"]
     assert latest["items"][0]["sweep"] == stored["sweep"]
     assert latest["items"][0]["structure"] == stored["structure"]
@@ -207,3 +228,8 @@ def test_oracle_post_stores_requested_symbol_and_ea_route_returns_it():
     assert ea_payload["lifecycle"] == "setup_confirmed"
     assert ea_payload["nearest_magnet"] is not None
     assert ea_payload["major_magnet"] is not None
+    assert ea_payload["target"] == ea_payload["ea_tp"]
+    assert ea_payload["ea_tp"] is not None
+    assert ea_payload["ea_sl"] is not None
+    assert ea_payload["dashboard_target"] == stored["dashboard_target"]
+    assert ea_payload["target_type"] == "atr"

@@ -9,7 +9,8 @@ from app.core.config import get_settings
 from app.schemas.signal import BestSignalResponse, EaLatestSignalResponse, LatestSignalResponse, StoredSignalOut
 from app.services.market_state_service import get_htf_context
 from app.services.signal_service import list_latest_signals
-from app.utils.dedupe import ALERT_COOLDOWN_WINDOW, CONFIDENCE_CHANGE_THRESHOLD, signal_key
+from app.services.target_engine import TPMode, minimum_ea_target_distance, recompute_signal_ea_plan
+from app.utils.dedupe import ALERT_COOLDOWN_WINDOW, CONFIDENCE_CHANGE_THRESHOLD, signal_key, signal_target
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,9 @@ MAX_CANDIDATES_PER_SYMBOL = 12
 MAX_TRADEABLE_AGE = timedelta(hours=24)
 EA_MIN_CONFIDENCE = 88
 MIN_TARGET_DISTANCE = {
-    "XAUUSD": 0.6,
-    "GBPJPY": 0.08,
-    "BTCUSD": 40.0,
+    "XAUUSD": 1.5,
+    "GBPJPY": 0.12,
+    "BTCUSD": 80.0,
 }
 
 LABEL_OVERRIDES = {
@@ -65,23 +66,58 @@ def _to_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def _target_distance(signal: StoredSignalOut) -> float:
-    if signal.intent.target is None:
+def _execution_target(
+    signal: StoredSignalOut,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> tuple[float | None, str]:
+    return recompute_signal_ea_plan(
+        symbol=signal.symbol,
+        action=signal.intent.action,
+        current_price=signal.current_price,
+        atr_m1=signal.atr_m1,
+        ea_sl=signal.ea_sl,
+        dashboard_target=signal.dashboard_target,
+        liquidity_target=signal.liquidity_target,
+        nearest_target=signal.nearest_magnet.price if signal.nearest_magnet is not None else None,
+        major_target=signal.major_magnet.price if signal.major_magnet is not None else None,
+        fallback_tp=signal.ea_tp or signal.intent.target,
+        tp_mode=tp_mode,
+        rr_multiple=rr_multiple,
+    )
+
+
+def _target_distance(
+    signal: StoredSignalOut,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> float:
+    target, _ = _execution_target(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
+    if target is None:
         return 0.0
-    return abs(signal.intent.target - signal.current_price)
+    return abs(target - signal.current_price)
 
 
 def _minimum_target_distance(signal: StoredSignalOut) -> float:
-    return MIN_TARGET_DISTANCE.get(signal.symbol.upper(), max(0.05, signal.current_price * 0.00015))
+    return MIN_TARGET_DISTANCE.get(signal.symbol.upper(), minimum_ea_target_distance(signal.symbol, signal.current_price))
 
 
 def _is_directional_bias(signal: StoredSignalOut) -> bool:
     return signal.resolved_bias.startswith(("bullish", "bearish"))
 
 
-def is_tradeable_signal(signal: StoredSignalOut, *, now: datetime | None = None) -> bool:
+def is_tradeable_signal(
+    signal: StoredSignalOut,
+    *,
+    now: datetime | None = None,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> bool:
     observed_at = now or _utcnow()
     created_at = _to_utc(signal.created_at)
+    target, _ = _execution_target(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
 
     if signal.intent.action not in {"BUY", "SELL"}:
         return False
@@ -91,24 +127,29 @@ def is_tradeable_signal(signal: StoredSignalOut, *, now: datetime | None = None)
         return False
     if not _is_directional_bias(signal):
         return False
-    if signal.intent.target is None:
+    if target is None:
         return False
-    if _target_distance(signal) < _minimum_target_distance(signal):
+    if _target_distance(signal, tp_mode=tp_mode, rr_multiple=rr_multiple) < _minimum_target_distance(signal):
         return False
     if observed_at - created_at > MAX_TRADEABLE_AGE:
         return False
     return True
 
 
-def _rank_signal(signal: StoredSignalOut) -> tuple[int, int, int, float, float]:
-    tradeable = 1 if is_tradeable_signal(signal) else 0
+def _rank_signal(
+    signal: StoredSignalOut,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> tuple[int, int, int, float, float]:
+    tradeable = 1 if is_tradeable_signal(signal, tp_mode=tp_mode, rr_multiple=rr_multiple) else 0
     directional = 1 if _is_directional_bias(signal) else 0
     created_at = _to_utc(signal.created_at).timestamp()
     return (
         tradeable,
         signal.confidence,
         directional,
-        _target_distance(signal),
+        _target_distance(signal, tp_mode=tp_mode, rr_multiple=rr_multiple),
         created_at,
     )
 
@@ -122,7 +163,7 @@ def _dedupe_candidates(signals: list[StoredSignalOut]) -> list[StoredSignalOut]:
             signal.symbol,
             signal.resolved_bias,
             signal.event_type,
-            signal.intent.target,
+            signal_target(signal),
         )
         newer = latest_by_key.get(current_key)
         if newer is not None:
@@ -137,20 +178,32 @@ def _dedupe_candidates(signals: list[StoredSignalOut]) -> list[StoredSignalOut]:
     return accepted
 
 
-def _build_candidate_response(signal: StoredSignalOut) -> BestSignalResponse:
+def _build_candidate_response(
+    signal: StoredSignalOut,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> BestSignalResponse:
+    target, target_type = _execution_target(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
     return BestSignalResponse(
         symbol=signal.symbol,
         action=signal.intent.action,
         bias=_humanize_label(signal.resolved_bias),
         confidence=signal.confidence,
         price=signal.current_price,
-        target=signal.intent.target,
-        tradeable=is_tradeable_signal(signal),
+        target=target,
+        target_type=target_type,
+        tradeable=is_tradeable_signal(signal, tp_mode=tp_mode, rr_multiple=rr_multiple),
         reason="Highest confidence active directional setup",
     )
 
 
-def select_best_signal(db: Session) -> BestSignalResponse:
+def select_best_signal(
+    db: Session,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> BestSignalResponse:
     settings = get_settings()
     candidates: list[StoredSignalOut] = []
 
@@ -158,7 +211,9 @@ def select_best_signal(db: Session) -> BestSignalResponse:
         latest = list_latest_signals(db, symbol, limit=MAX_CANDIDATES_PER_SYMBOL)
         candidates.extend(_dedupe_candidates(latest.items))
 
-    tradeable_candidates = [signal for signal in candidates if is_tradeable_signal(signal)]
+    tradeable_candidates = [
+        signal for signal in candidates if is_tradeable_signal(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
+    ]
     if not tradeable_candidates:
         logger.info(
             "No tradeable signal available | symbols=%s",
@@ -169,28 +224,64 @@ def select_best_signal(db: Session) -> BestSignalResponse:
             message="No strong signal available",
         )
 
-    selected = max(tradeable_candidates, key=_rank_signal)
+    selected = max(
+        tradeable_candidates,
+        key=lambda item: _rank_signal(item, tp_mode=tp_mode, rr_multiple=rr_multiple),
+    )
+    selected_target, selected_target_type = _execution_target(
+        selected,
+        tp_mode=tp_mode,
+        rr_multiple=rr_multiple,
+    )
     logger.info(
         "Best signal selected | symbol=%s action=%s confidence=%s target=%s",
         selected.symbol,
         selected.intent.action,
         selected.confidence,
-        selected.intent.target,
+        selected_target,
     )
-    return _build_candidate_response(selected)
+    response = _build_candidate_response(selected, tp_mode=tp_mode, rr_multiple=rr_multiple)
+    response.target_type = selected_target_type
+    return response
 
 
-def get_latest_tradeable_signal(db: Session, symbol: str) -> LatestSignalResponse:
+def get_latest_tradeable_signal(
+    db: Session,
+    symbol: str,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> LatestSignalResponse:
     latest = list_latest_signals(db, symbol, limit=MAX_CANDIDATES_PER_SYMBOL)
     candidates = _dedupe_candidates(latest.items)
-    item = next((signal for signal in candidates if is_tradeable_signal(signal)), None)
+    item = next(
+        (
+            signal
+            for signal in candidates
+            if is_tradeable_signal(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
+        ),
+        None,
+    )
     return LatestSignalResponse(symbol=latest.symbol, item=item)
 
 
-def get_latest_ea_signal(db: Session, symbol: str) -> EaLatestSignalResponse:
+def get_latest_ea_signal(
+    db: Session,
+    symbol: str,
+    *,
+    tp_mode: TPMode = "ATR",
+    rr_multiple: float = 1.5,
+) -> EaLatestSignalResponse:
     latest = list_latest_signals(db, symbol, limit=MAX_CANDIDATES_PER_SYMBOL)
     candidates = _dedupe_candidates(latest.items)
-    signal = next((item for item in candidates if is_tradeable_signal(item)), None)
+    signal = next(
+        (
+            item
+            for item in candidates
+            if is_tradeable_signal(item, tp_mode=tp_mode, rr_multiple=rr_multiple)
+        ),
+        None,
+    )
 
     if signal is None:
         logger.info("No tradeable signal available for EA | symbol=%s", latest.symbol)
@@ -200,12 +291,14 @@ def get_latest_ea_signal(db: Session, symbol: str) -> EaLatestSignalResponse:
             message="No strong signal available",
         )
 
+    target, target_type = _execution_target(signal, tp_mode=tp_mode, rr_multiple=rr_multiple)
     logger.info(
-        "EA latest signal selected | symbol=%s action=%s confidence=%s target=%s",
+        "EA latest signal selected | symbol=%s action=%s confidence=%s target=%s target_type=%s",
         signal.symbol,
         signal.intent.action,
         signal.confidence,
-        signal.intent.target,
+        target,
+        target_type,
     )
     return EaLatestSignalResponse(
         symbol=signal.symbol,
@@ -213,10 +306,15 @@ def get_latest_ea_signal(db: Session, symbol: str) -> EaLatestSignalResponse:
         bias=signal.resolved_bias,
         confidence=signal.confidence,
         price=signal.current_price,
-        target=signal.intent.target,
+        target=target,
+        ea_tp=target,
+        ea_sl=signal.ea_sl,
         stop_hint=signal.intent.stop_hint,
         nearest_magnet=_compact_magnet(signal.nearest_magnet),
         major_magnet=_compact_magnet(signal.major_magnet),
+        liquidity_target=signal.liquidity_target,
+        dashboard_target=signal.dashboard_target,
+        target_type=target_type,
         tradeable=True,
         lifecycle=_compact_lifecycle(signal.lifecycle.state),
         htf_context=get_htf_context(db, signal.symbol, signal.intent.action),

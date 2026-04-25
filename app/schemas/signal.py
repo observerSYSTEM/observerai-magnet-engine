@@ -39,6 +39,12 @@ class StoredSignalOut(BaseModel):
     adr_state: str
     nearest_magnet: Optional[MagnetInfo] = None
     major_magnet: Optional[MagnetInfo] = None
+    liquidity_target: float | None = None
+    dashboard_target: float | None = None
+    telegram_target: float | None = None
+    ea_tp: float | None = None
+    ea_sl: float | None = None
+    target_type: str | None = None
     magnet_path: list[MagnetInfo] = Field(default_factory=list)
     sweep: Optional[SweepOut] = None
     structure: Optional[StructureOut] = None
@@ -49,6 +55,7 @@ class StoredSignalOut(BaseModel):
     confidence: int
     message: str
     created_at: datetime
+    atr_m1: float | None = Field(default=None, exclude=True)
 
 
 class SignalsLatestResponse(BaseModel):
@@ -69,9 +76,14 @@ class EaLatestSignalResponse(BaseModel):
     confidence: Optional[int] = None
     price: Optional[float] = None
     target: Optional[float] = None
+    ea_tp: Optional[float] = None
+    ea_sl: Optional[float] = None
     stop_hint: Optional[str] = None
     nearest_magnet: Optional[str] = None
     major_magnet: Optional[str] = None
+    liquidity_target: Optional[float] = None
+    dashboard_target: Optional[float] = None
+    target_type: Optional[str] = None
     tradeable: bool
     lifecycle: Optional[str] = None
     htf_context: HtfContextOut | None = None
@@ -86,6 +98,7 @@ class BestSignalResponse(BaseModel):
     confidence: Optional[int] = None
     price: Optional[float] = None
     target: Optional[float] = None
+    target_type: Optional[str] = None
     tradeable: bool
     reason: Optional[str] = None
     message: Optional[str] = None

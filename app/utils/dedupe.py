@@ -10,7 +10,7 @@ CONFIDENCE_CHANGE_THRESHOLD = 5
 
 
 def signal_target(signal: StoredSignalOut) -> float | None:
-    return signal.intent.target
+    return signal.telegram_target or signal.dashboard_target or signal.intent.target
 
 
 def signal_key(symbol: str, resolved_bias: str, event_type: str, target: float | None) -> str:

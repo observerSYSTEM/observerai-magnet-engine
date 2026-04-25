@@ -1,8 +1,8 @@
 import logging
 import secrets
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -45,17 +45,21 @@ def require_ea_api_key(
 @router.get("/latest-signal", response_model=EaLatestSignalResponse)
 def ea_latest_signal(
     symbol: str = DEFAULT_SYMBOL,
+    tp_mode: Annotated[Literal["ATR", "RR", "MAGNET"], Query()] = "ATR",
+    rr_multiple: Annotated[float, Query(ge=1.0, le=3.0)] = 1.5,
     _: None = Depends(require_ea_api_key),
     __: None = Depends(rate_limit("signals_ea_latest", limit=60, window_seconds=60)),
     db: Session = Depends(get_db),
 ) -> EaLatestSignalResponse:
-    return get_latest_ea_signal(db, symbol)
+    return get_latest_ea_signal(db, symbol, tp_mode=tp_mode, rr_multiple=rr_multiple)
 
 
 @router.get("/best-signal", response_model=BestSignalResponse)
 def ea_best_signal(
+    tp_mode: Annotated[Literal["ATR", "RR", "MAGNET"], Query()] = "ATR",
+    rr_multiple: Annotated[float, Query(ge=1.0, le=3.0)] = 1.5,
     _: None = Depends(require_ea_api_key),
     __: None = Depends(rate_limit("signals_ea_best", limit=60, window_seconds=60)),
     db: Session = Depends(get_db),
 ) -> BestSignalResponse:
-    return select_best_signal(db)
+    return select_best_signal(db, tp_mode=tp_mode, rr_multiple=rr_multiple)

@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.oracle import MagnetInfo
+
 
 class V2LiquidityMagnetOut(BaseModel):
     rank: int
@@ -135,6 +137,12 @@ class DashboardScalpSignalOut(BaseModel):
     bias: str | None = None
     confidence: int | None = None
     target: float | None = None
+    liquidity_target: float | None = None
+    dashboard_target: float | None = None
+    ea_tp: float | None = None
+    target_type: str | None = None
+    nearest_magnet: MagnetInfo | None = None
+    major_magnet: MagnetInfo | None = None
     lifecycle: str | None = None
     tradeable: bool = False
     created_at: datetime | None = None

@@ -109,6 +109,12 @@ class OracleEvaluateResponse(BaseModel):
     adr_state: str
     nearest_magnet: Optional[MagnetInfo] = None
     major_magnet: Optional[MagnetInfo] = None
+    liquidity_target: Optional[float] = None
+    dashboard_target: Optional[float] = None
+    telegram_target: Optional[float] = None
+    ea_tp: Optional[float] = None
+    ea_sl: Optional[float] = None
+    target_type: Optional[str] = None
     magnet_path: list[MagnetInfo] = Field(default_factory=list)
     sweep: Optional[SweepOut] = None
     structure: Optional[StructureOut] = None

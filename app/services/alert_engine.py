@@ -105,11 +105,16 @@ def _format_status(signal: StoredSignalOut) -> str:
     return "Setup Forming"
 
 
-def _format_magnet_name(signal: StoredSignalOut) -> str:
-    magnet = signal.nearest_magnet or signal.major_magnet
+def _format_magnet_name(magnet) -> str:
     if magnet is None:
         return "None"
     return f"{_humanize_label(magnet.name)} {magnet.price:.2f}"
+
+
+def _format_stop_hint(signal: StoredSignalOut) -> str:
+    if not signal.intent.stop_hint:
+        return "None"
+    return _humanize_label(signal.intent.stop_hint)
 
 
 def _format_momentum(signal: StoredSignalOut) -> str:
@@ -189,17 +194,27 @@ def _build_reason(signal: StoredSignalOut) -> str:
 def build_alert_message(signal: StoredSignalOut) -> str:
     """Build a polished Telegram message from a stored oracle signal."""
 
+    lifecycle_status = _format_status(signal)
+    status_line = ""
+    if lifecycle_status not in {"Setup Confirmed", "Setup Forming"}:
+        status_line = f"Status: {lifecycle_status}\n"
+
+    htf_target = signal.liquidity_target or signal.telegram_target or signal.dashboard_target
+
     return (
-        "⚡ ObserverAI Signal Alert\n\n"
+        "⚡ ObserverAI Signal\n\n"
         f"Symbol: {_format_symbol(signal.symbol)}\n"
-        f"Status: {_format_status(signal)}\n"
-        f"Action: {_format_action(signal.intent.action)}\n"
+        f"{status_line}"
         f"Bias: {_humanize_label(signal.resolved_bias)}\n"
+        f"Action: {_format_action(signal.intent.action)}\n"
         f"Confidence: {signal.confidence}%\n\n"
-        "Entry Context:\n"
-        f"Current Price: {_format_price(signal.current_price)}\n"
-        f"Target: {_format_price(signal.intent.target, default='Not Set')}\n"
-        f"Nearest Magnet: {_format_magnet_name(signal)}\n\n"
+        "Execution Area:\n"
+        f"Price: {_format_price(signal.current_price)}\n"
+        f"Stop Hint: {_format_stop_hint(signal)}\n\n"
+        "Liquidity Targets:\n"
+        f"T1: {_format_magnet_name(signal.nearest_magnet)}\n"
+        f"T2: {_format_magnet_name(signal.major_magnet)}\n"
+        f"HTF Target: {_format_price(htf_target)}\n\n"
         "Market Structure:\n"
         f"Momentum: {_format_momentum(signal)}\n"
         f"Structure: {_format_structure(signal)}\n"
@@ -207,6 +222,8 @@ def build_alert_message(signal: StoredSignalOut) -> str:
         f"ADR State: {_humanize_label(signal.adr_state)}\n\n"
         "Reason:\n"
         f"{_build_reason(signal)}\n\n"
+        "EA Note:\n"
+        "EA may use separate TP based on ATR/RR execution logic.\n\n"
         "ObserverAI Magnet Engine\n"
         "Structured signals. Measurable outcomes."
     )

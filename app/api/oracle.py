@@ -48,7 +48,9 @@ from app.services.market_state_service import upsert_market_state
 from app.services.news_context import compute_news_context
 from app.services.signal_service import save_evaluated_signal
 from app.services.telegram_service import deliver_signal_alert, deliver_signal_outcome_alerts
+from app.services.target_engine import build_target_plan
 from app.services.v2_intelligence import build_v2_intelligence_snapshot
+from app.schemas.v2 import V2IntelligenceResponse
 
 router = APIRouter()
 
@@ -61,6 +63,7 @@ class OracleEvaluationArtifacts:
     anchor_value_low: float
     anchor_value_high: float
     m15_candles: list[M15Candle]
+    v2_snapshot: V2IntelligenceResponse
 
 
 def _event_direction(event_type: str) -> str | None:
@@ -189,12 +192,6 @@ def _persist_market_state(
         if payload.h4_candles
         else None
     )
-    news_context = compute_news_context(symbol)
-    v2_snapshot = build_v2_intelligence_snapshot(
-        payload.model_copy(update={"symbol": symbol}),
-        news_context=news_context,
-    )
-
     upsert_market_state(
         db,
         symbol=symbol,
@@ -220,7 +217,7 @@ def _persist_market_state(
         bias=artifacts.response.bias,
         h1_candles=h1_candles,
         h4_candles=h4_candles,
-        v2_snapshot=v2_snapshot.model_dump(mode="json"),
+        v2_snapshot=artifacts.v2_snapshot.model_dump(mode="json"),
     )
 
 
@@ -427,6 +424,29 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
         momentum=momentum,
         mid_targets=mid_targets,
     )
+    news_context = compute_news_context(payload.symbol)
+    v2_snapshot = build_v2_intelligence_snapshot(
+        payload.model_copy(update={"symbol": payload.symbol}),
+        news_context=news_context,
+    )
+    target_plan = build_target_plan(
+        symbol=payload.symbol,
+        action=intent.action,
+        current_price=payload.current_price,
+        atr_m1=payload.atr_m1,
+        stop_hint=intent.stop_hint,
+        nearest_magnet=nearest,
+        major_magnet=major,
+        v2_snapshot=v2_snapshot,
+        anchor_value_low=anchor.value_low,
+        anchor_value_high=anchor.value_high,
+        m15_candles=m15_candles,
+    )
+    liquidity_target = target_plan.liquidity_target
+    dashboard_target = target_plan.dashboard_target or intent.target
+    telegram_target = target_plan.telegram_target or dashboard_target
+    ea_tp = target_plan.ea_tp
+    ea_sl = target_plan.ea_sl
     confidence = score_signal(
         event_type=event_type,
         bias=resolved_bias,
@@ -445,9 +465,10 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
         mid_flow=mid_targets.flow,
     )
 
-    target_label = f"{intent.target:.5f}" if intent.target is not None else "none"
+    target_label = f"{dashboard_target:.5f}" if dashboard_target is not None else "none"
+    ea_target_label = f"{ea_tp:.5f}" if ea_tp is not None else "none"
     message = (
-        f"{payload.symbol} action={intent.action} target={target_label} | "
+        f"{payload.symbol} action={intent.action} liquidity_target={target_label} ea_tp={ea_target_label} | "
         f"resolved_bias={resolved_bias} | event={event_type} | "
         f"structure={structure.type}:{structure.direction} | "
         f"sweep={sweep.type}:{sweep.strength:.2f} | "
@@ -455,6 +476,7 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
         f"mid_flow={mid_targets.flow} | "
         f"nearest={nearest.name if nearest else 'none'} | "
         f"major={major.name if major else 'none'} | "
+        f"target_type={target_plan.target_type} | "
         f"ADR={adr_state.adr_used_pct}%"
     )
 
@@ -472,6 +494,12 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
         adr_state=adr_state.adr_state,
         nearest_magnet=_to_magnet_info(nearest),
         major_magnet=_to_magnet_info(major),
+        liquidity_target=liquidity_target,
+        dashboard_target=dashboard_target,
+        telegram_target=telegram_target,
+        ea_tp=ea_tp,
+        ea_sl=ea_sl,
+        target_type=target_plan.target_type,
         magnet_path=[info for info in (_to_magnet_info(magnet) for magnet in magnet_path) if info is not None],
         sweep=SweepOut(type=sweep.type, strength=sweep.strength),
         structure=StructureOut(type=structure.type, direction=structure.direction),
@@ -490,7 +518,7 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
             action=intent.action,
             entry_type=intent.entry_type,
             reason=intent.reason,
-            target=intent.target,
+            target=dashboard_target,
             stop_hint=intent.stop_hint,
         ),
         confidence=confidence,
@@ -501,6 +529,7 @@ def _evaluate_oracle_payload_artifacts(payload: OracleEvaluateRequest) -> Oracle
         anchor_value_low=anchor.value_low,
         anchor_value_high=anchor.value_high,
         m15_candles=m15_candles,
+        v2_snapshot=v2_snapshot,
     )
 
 
@@ -532,7 +561,7 @@ def evaluate_oracle_post(
         current_price=artifacts.response.current_price,
     )
     deliver_signal_outcome_alerts(db, closed_outcomes)
-    saved_signal = save_evaluated_signal(db, artifacts.response)
+    saved_signal = save_evaluated_signal(db, artifacts.response, atr_m1=payload.atr_m1)
     outcome_seed = build_signal_outcome_seed(
         response=artifacts.response,
         anchor_value_low=artifacts.anchor_value_low,

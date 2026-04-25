@@ -59,6 +59,12 @@ def signal_row_to_stored_signal(row: Signal) -> StoredSignalOut:
         adr_state=row.adr_state or "",
         nearest_magnet=_json_load(row.nearest_magnet),
         major_magnet=_json_load(row.major_magnet),
+        liquidity_target=row.liquidity_target,
+        dashboard_target=row.dashboard_target,
+        telegram_target=row.telegram_target,
+        ea_tp=row.ea_tp,
+        ea_sl=row.ea_sl,
+        target_type=row.target_type,
         magnet_path=_json_load(row.magnet_path) or [],
         sweep=_json_load(row.sweep),
         structure=_json_load(row.structure),
@@ -73,6 +79,7 @@ def signal_row_to_stored_signal(row: Signal) -> StoredSignalOut:
         confidence=row.confidence,
         message=row.message,
         created_at=row.created_at,
+        atr_m1=row.atr_m1,
     )
 
 
@@ -99,7 +106,12 @@ def get_previous_signal_candidate(db: Session, current_signal: Signal) -> Stored
     return signal_row_to_stored_signal(row) if row is not None else None
 
 
-def save_evaluated_signal(db: Session, payload: OracleEvaluateResponse) -> Signal:
+def save_evaluated_signal(
+    db: Session,
+    payload: OracleEvaluateResponse,
+    *,
+    atr_m1: float | None = None,
+) -> Signal:
     """Persist an oracle evaluation using the existing signal table."""
 
     symbol = normalize_symbol(payload.symbol)
@@ -133,8 +145,15 @@ def save_evaluated_signal(db: Session, payload: OracleEvaluateResponse) -> Signa
         adr=payload.adr,
         adr_used_pct=payload.adr_used_pct,
         adr_state=payload.adr_state,
+        atr_m1=atr_m1,
         nearest_magnet=_json_dump(nearest),
         major_magnet=_json_dump(major),
+        liquidity_target=payload.liquidity_target,
+        dashboard_target=payload.dashboard_target,
+        telegram_target=payload.telegram_target,
+        ea_tp=payload.ea_tp,
+        ea_sl=payload.ea_sl,
+        target_type=payload.target_type,
         magnet_path=_json_dump(magnet_path),
         sweep=_json_dump(sweep),
         structure=_json_dump(structure),

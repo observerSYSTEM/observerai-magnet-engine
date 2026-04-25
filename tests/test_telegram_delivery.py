@@ -111,10 +111,16 @@ def test_dedupe_blocks_repeated_identical_actionable_alert():
         db_path.unlink(missing_ok=True)
 
     assert len(messages) == 1
-    assert "ObserverAI Signal Alert" in messages[0]
-    assert "Status: Setup Confirmed" in messages[0]
-    assert "Action: Buy Signal" in messages[0]
+    assert "ObserverAI Signal" in messages[0]
+    assert "Status: Setup Confirmed" not in messages[0]
     assert "Bias: Bullish Continuation" in messages[0]
+    assert "Action: Buy Signal" in messages[0]
+    assert "Execution Area:" in messages[0]
+    assert "Liquidity Targets:" in messages[0]
+    assert "T1: PDH 3361.40" in messages[0]
+    assert "T2: PDH 3361.40" in messages[0]
+    assert "HTF Target: 3361.40" in messages[0]
+    assert "EA may use separate TP based on ATR/RR execution logic." in messages[0]
     assert "bullish_continuation" not in messages[0]
 
 
@@ -145,6 +151,9 @@ def test_new_alert_allowed_when_target_changes():
                     target=3372.8,
                     stop_hint=baseline.intent.stop_hint,
                 ),
+                "liquidity_target": 3378.8,
+                "dashboard_target": 3372.8,
+                "telegram_target": 3372.8,
                 "message": baseline.message.replace("3361.40000", "3372.80000"),
             }
         )
@@ -160,8 +169,9 @@ def test_new_alert_allowed_when_target_changes():
         db_path.unlink(missing_ok=True)
 
     assert len(messages) == 1
-    assert "Target: 3372.80" in messages[0]
-    assert "Nearest Magnet: ADR High 3372.80" in messages[0]
+    assert "T1: ADR High 3372.80" in messages[0]
+    assert "T2: ADR High 3372.80" in messages[0]
+    assert "HTF Target: 3378.80" in messages[0]
 
 
 def test_non_actionable_wait_signal_does_not_send():

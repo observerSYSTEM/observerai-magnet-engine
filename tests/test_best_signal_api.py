@@ -115,6 +115,7 @@ def test_best_signal_returns_highest_confidence_tradeable_setup():
     assert payload["action"] in {"BUY", "SELL"}
     assert payload["confidence"] is not None
     assert payload["target"] is not None
+    assert payload["target_type"] == "atr"
     assert payload["reason"] == "Highest confidence active directional setup"
     assert ea_payload["tradeable"] is True
     assert ea_payload["symbol"] == payload["symbol"]
@@ -149,6 +150,26 @@ def test_ea_routes_filter_out_low_confidence_setups():
     assert latest_payload["tradeable"] is False
     assert latest_payload["message"] == "No strong signal available"
     assert latest_payload["action"] is None
+
+
+def test_ea_routes_support_tp_modes():
+    db_path, engine, testing_session_local = _build_test_db()
+    try:
+        with testing_session_local() as db:
+            evaluate_oracle_post(_sample_oracle_request("XAUUSD", 3358.40), db=db)
+            atr_payload = ea_latest_signal(symbol="XAUUSD", tp_mode="ATR", db=db).model_dump()
+            magnet_payload = ea_latest_signal(symbol="XAUUSD", tp_mode="MAGNET", db=db).model_dump()
+            rr_payload = ea_latest_signal(symbol="XAUUSD", tp_mode="RR", rr_multiple=2.0, db=db).model_dump()
+    finally:
+        _cleanup_test_db(db_path, engine)
+
+    assert atr_payload["target_type"] == "atr"
+    assert atr_payload["target"] == 3359.9
+    assert magnet_payload["target_type"] == "magnet"
+    assert magnet_payload["target"] == magnet_payload["dashboard_target"]
+    assert magnet_payload["target"] > atr_payload["target"]
+    assert rr_payload["target_type"] == "rr_2.0"
+    assert rr_payload["target"] > magnet_payload["target"]
 
 
 def test_ea_api_key_blocks_missing_header_when_configured(monkeypatch):

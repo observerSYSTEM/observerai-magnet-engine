@@ -429,6 +429,13 @@ def signals_dashboard() -> HTMLResponse:
       return number.toFixed(5);
     }
 
+    function formatMagnetValue(magnet) {
+      if (!magnet) {
+        return "None";
+      }
+      return `${humanizeLabel(magnet.name)} ${formatPrice(magnet.price)}`;
+    }
+
     function formatAge(value) {
       if (!value) {
         return "Unknown";
@@ -572,7 +579,7 @@ def signals_dashboard() -> HTMLResponse:
           <div class="metric"><span class="metric-label">Next Zone</span><span class="metric-value">${zone.next_zone ? formatPrice(zone.next_zone) : "No valid zone"}</span></div>
           <div class="metric"><span class="metric-label">Major Zone</span><span class="metric-value">${zone.major_zone ? formatPrice(zone.major_zone) : "No valid zone"}</span></div>
           <div class="metric"><span class="metric-label">Direction</span><span class="metric-value">${humanizeLabel(zone.direction)}</span></div>
-          <div class="metric"><span class="metric-label">Strongest Liquidity Magnet</span><span class="metric-value">${liquidity.strongest_magnet ? `${liquidity.strongest_magnet.timeframe} ${liquidity.strongest_magnet.label} ${formatPrice(liquidity.strongest_magnet.price)}` : "No magnet yet"}</span></div>
+          <div class="metric"><span class="metric-label">HTF Magnet</span><span class="metric-value">${liquidity.strongest_magnet ? `${liquidity.strongest_magnet.timeframe} ${liquidity.strongest_magnet.label} ${formatPrice(liquidity.strongest_magnet.price)}` : "No magnet yet"}</span></div>
           <div class="metric"><span class="metric-label">HTF Bias</span><span class="metric-value">${humanizeLabel(liquidity.htf_magnet_bias)}</span></div>
         </div>
         <p class="reason">${path.length ? path.map((item) => `${item.label} ${formatPrice(item.price)}`).join(" -> ") : "No path available yet."}</p>
@@ -649,9 +656,15 @@ def signals_dashboard() -> HTMLResponse:
           <div class="metric"><span class="metric-label">Action</span><span class="metric-value ${actionClass(scalp.action)}">${humanizeLabel(scalp.action)}</span></div>
           <div class="metric"><span class="metric-label">Lifecycle</span><span class="metric-value">${humanizeLabel(scalp.lifecycle)}</span></div>
           <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${scalp.confidence || 0}%</span></div>
-          <div class="metric"><span class="metric-label">Target Price</span><span class="metric-value">${scalp.target ? formatPrice(scalp.target) : "None"}</span></div>
+          <div class="metric"><span class="metric-label">Liquidity Target</span><span class="metric-value">${scalp.dashboard_target ? formatPrice(scalp.dashboard_target) : (scalp.target ? formatPrice(scalp.target) : "None")}</span></div>
           <div class="metric"><span class="metric-label">Tradeable</span><span class="metric-value">${scalp.tradeable ? "Tradeable" : "Not Tradeable"}</span></div>
           <div class="metric"><span class="metric-label">Time Since Signal</span><span class="metric-value">${formatAge(scalp.created_at)}</span></div>
+          <div class="metric"><span class="metric-label">EA TP</span><span class="metric-value">${scalp.ea_tp ? formatPrice(scalp.ea_tp) : "None"}</span></div>
+          <div class="metric"><span class="metric-label">Target Type</span><span class="metric-value">${humanizeLabel(scalp.target_type)}</span></div>
+          <div class="metric"><span class="metric-label">Nearest Magnet</span><span class="metric-value">${formatMagnetValue(scalp.nearest_magnet)}</span></div>
+          <div class="metric"><span class="metric-label">Major Magnet</span><span class="metric-value">${formatMagnetValue(scalp.major_magnet)}</span></div>
+          <div class="metric"><span class="metric-label">HTF Magnet</span><span class="metric-value">${intelligence.liquidity_magnets && intelligence.liquidity_magnets.strongest_magnet ? `${intelligence.liquidity_magnets.strongest_magnet.label} ${formatPrice(intelligence.liquidity_magnets.strongest_magnet.price)}` : "No magnet yet"}</span></div>
+          <div class="metric"><span class="metric-label">Final Bias Target</span><span class="metric-value">${scalp.liquidity_target ? formatPrice(scalp.liquidity_target) : "None"}</span></div>
         </div>
         <p class="reason">${best.reason || "No scalp rationale available."}</p>
       `;
